@@ -2,8 +2,12 @@ import uuid
 
 import chromadb
 import pytest
+from pydantic_ai import models
 
 from cv_screener.store import CandidateStore
+
+# A test that forgets to pass a fake model must fail, not spend credits. TestModel/FunctionModel still work.
+models.ALLOW_MODEL_REQUESTS = False
 
 from .fakes import FakeEmbedder, make_fields
 

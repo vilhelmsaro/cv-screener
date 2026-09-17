@@ -1,4 +1,5 @@
 from pydantic_ai.messages import ModelRequest, ModelResponse, TextPart, ToolCallPart, ToolReturnPart
+from pydantic_ai.models.function import FunctionModel
 from pydantic_ai.models.test import TestModel
 
 from cv_screener.agent import Deps, build_agent
@@ -40,3 +41,20 @@ def test_mentioned_matches_whole_words_only():
     names = ["Chen Wei", "Daniel Kim", "Lucía Fernández Ortega"]
     assert mentioned("The kitchen team skimmed weights.", names) == set()
     assert mentioned("Lucia Ortega and Daniel Kim fit.", names) == {"Lucía Fernández Ortega", "Daniel Kim"}
+
+
+def test_model_never_receives_the_cv_dataset(store):
+    """The core requirement of the task: the agent searches with tools instead of reading every CV."""
+    sent = []
+
+    def search_then_answer(messages, info):
+        sent.append(repr(messages))
+        if len(sent) == 1:
+            return ModelResponse(parts=[ToolCallPart("search_candidates", {"languages": ["Spanish"]})])
+        return ModelResponse(parts=[TextPart("Done.")])
+
+    build_agent(FunctionModel(search_then_answer)).run_sync("Who speaks Spanish?", deps=Deps(store=store))
+    for secret in ("Lucía", "Becker", "Petrosyan", "churn", "Firmware", "scikit-learn"):
+        assert secret not in sent[0]
+    # Not vacuous: candidate data does reach the model, but only after a tool returned it.
+    assert "Lucía" in sent[1] and "Becker" not in sent[1]
