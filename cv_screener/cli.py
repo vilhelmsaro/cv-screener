@@ -1,4 +1,4 @@
-"""CLI entry point: `cvs generate | index | chat | ask | eval`."""
+"""CLI entry point: `cvs generate | index | coverage | chat | ask | eval`."""
 from __future__ import annotations
 
 import typer
@@ -22,6 +22,14 @@ def index():
     """Parse PDFs, extract fields, write to the vector store."""
     from . import index as idx
     idx.run()
+
+
+@app.command()
+def coverage():
+    """Check what is in the vector store: chunks per CV section for every candidate. No API key needed."""
+    from .index import check_coverage
+    from .store import CandidateStore
+    raise typer.Exit(1 if check_coverage(CandidateStore(embedder=None)) else 0)
 
 
 def _agent_and_deps():

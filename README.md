@@ -16,7 +16,8 @@ cp .env.example .env            # put your OPENROUTER_API_KEY in .env
 docker compose build
 
 docker compose run --rm app generate   # 1. 12 candidates -> data/cvs/*.pdf
-docker compose run --rm app index      # 2. PDFs -> fields + embeddings -> Chroma
+docker compose run --rm app index      # 2. PDFs -> fields + embeddings -> Chroma, prints coverage
+docker compose run --rm app coverage   #    re-check what is stored, per CV section (no API calls)
 docker compose run --rm app chat       # 3. interactive agent
 docker compose run --rm app eval       # evals, prints pass/fail + total
 docker compose run --rm --entrypoint pytest app   # tests, no API key needed
@@ -50,7 +51,10 @@ pytest
    `profiles` (one record per candidate) and `chunks` (one per CV section, and one per job or degree,
    found from section headings and date ranges in the PDF text; each is embedded with the candidate's
    name and title). Every record carries the fields as metadata, including normalized
-   `skill_keys` / `lang_keys` lists for exact filtering (`{"skill_keys": {"$contains": "python"}}`).
+   `skill_keys` / `lang_keys` lists for exact filtering (`{"skill_keys": {"$contains": "python"}}`), and
+   each chunk has a `section` label (`header`, `experience`, `education`, `skills`, `languages`, ...).
+   After writing, indexing reads the labels back from Chroma and fails if a CV is missing a required
+   section or if fewer chunks were stored than sent; `cvs coverage` runs the same check on demand.
 3. **Search.** `CandidateStore.search()` combines metadata filters (skills, languages, seniority, country,
    min years) with semantic similarity over chunks; with no query it is a pure field search.
 4. **Agent** (`cv_screener/agent.py`). A PydanticAI agent with three tools: `search_candidates`,
@@ -63,6 +67,9 @@ pytest
   Each checks tool usage, expected/forbidden names, and **grounding**: every candidate named in the answer
   must appear in tool results. Results are written to `evals/last_run.txt`.
 - `tests/` runs offline with a hashing fake embedder, an in-memory Chroma, and PydanticAI's `TestModel`.
+  `tests/test_chunking.py` pins the chunking rules and edge cases. `tests/test_generated_cvs.py` checks the
+  real PDFs in `data/cvs` (skipped until `generate` has run): every job and degree is exactly one chunk with
+  all its bullets, using the generator's JSON only as the answer key.
 
 ## Layout
 

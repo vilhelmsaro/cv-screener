@@ -1,9 +1,12 @@
-import pymupdf
+import uuid
+from collections import Counter
 
-from cv_screener.index import pdf_text
-from cv_screener.store import CandidateStore, chunk_cv, norm
+import chromadb
 
-from .fakes import make_fields
+from cv_screener.index import check_coverage
+from cv_screener.store import CandidateStore, missing_sections, norm
+
+from .fakes import FakeEmbedder, make_fields
 
 
 def test_field_filters_are_exact(store):
@@ -42,80 +45,66 @@ def test_get_candidate_is_accent_and_partial_insensitive(store):
     assert store.get("an") is None and store.get("") is None
 
 
-CV_TEXT = """CONTACT
-
-jane@example.com
-
-SKILLS
-
-Python, SQL
-
-Jane Doe
-
-Data Engineer
-
-Builds pipelines.
-
-Experience
-
-Data Engineer
-Feb 2022 – Present
-Acme · Berlin
-
-Built Spark jobs.
-
-Moved ETL to Airflow.
-
-Junior Analyst
-2019 – 2021
-Beta · Berlin
-
-Wrote SQL reports.
-
-Education
-
-Frontend Bootcamp (React,
-JavaScript)
-
-Apr 2018 – Sep
-2018
-Code School · Berlin"""
-
-
-def test_chunk_cv_splits_by_section_and_entry():
-    chunks = chunk_cv(CV_TEXT, name="Jane Doe")
-    assert chunks == [
-        "Contact\njane@example.com",
-        "Skills\nPython, SQL",
-        "Jane Doe\nData Engineer\nBuilds pipelines.",  # sidebar layout: summary is not glued to Skills
-        "Experience\nData Engineer\nFeb 2022 – Present\nAcme · Berlin\nBuilt Spark jobs.\nMoved ETL to Airflow.",
-        "Experience\nJunior Analyst\n2019 – 2021\nBeta · Berlin\nWrote SQL reports.",
-        "Education\nFrontend Bootcamp (React,\nJavaScript)\nApr 2018 – Sep\n2018\nCode School · Berlin",
-    ]
-
-
-def test_chunk_cv_splits_oversized_entry_and_keeps_title():
-    text = "Experience\n\nLead\n2020 – 2024\nAcme\n\n" + "\n".join(f"Bullet {i} " + "x" * 50 for i in range(20))
-    chunks = chunk_cv(text, max_chars=400)
-    assert len(chunks) > 1
-    assert all(c.startswith("Experience\nLead") and len(c) <= 420 for c in chunks)
-
-
-def test_pdf_text_keeps_layout_blocks(tmp_path):
-    path = tmp_path / "cv.pdf"
-    doc = pymupdf.open()
-    page = doc.new_page()
-    page.insert_textbox(pymupdf.Rect(72, 60, 520, 90), "Experience")
-    # The built-in PDF font has no en dash, so this also covers plain-hyphen date ranges.
-    page.insert_textbox(pymupdf.Rect(72, 120, 520, 180), "Data Engineer\nFeb 2022 - Present\nAcme, Berlin")
-    page.insert_textbox(pymupdf.Rect(72, 220, 520, 260), "Built Spark jobs.")
-    page.insert_text((72, 760), "•")
-    doc.save(path)
-    text = pdf_text(path)
-    assert "•" not in text
-    assert chunk_cv(text) == ["Experience\nData Engineer\nFeb 2022 - Present\nAcme, Berlin\nBuilt Spark jobs."]
-
-
 def test_helpers():
     assert norm("C++") == "cplusplus" and norm("Node.js") == "nodejs" and norm("Español") == "espanol"
     assert CandidateStore.build_where() is None
+
+
+FULL_CV = """Johannes Becker
+Senior Embedded Engineer
+
+Professional Experience
+
+Senior Embedded Engineer
+Apr 2020 – Present
+Continental · Regensburg
+
+Firmware for ECUs.
+
+Education
+
+Dipl.-Ing. Electrical Engineering
+2004 – 2010
+TU München
+
+Skills
+
+C, C++, AUTOSAR
+
+Languages
+
+German — Native"""
+
+
+def test_stored_sections_match_what_was_sent(store):
+    sent = store.upsert("c08", make_fields("Johannes Becker", "Senior Embedded Engineer", "Germany", "senior", 14,
+                                           ["C++"], ["German"]), FULL_CV)
+    assert sent == {"header": 1, "experience": 1, "education": 1, "skills": 1, "languages": 1}
+    stored = store.section_counts()["c08"]
+    assert stored["name"] == "Johannes Becker" and stored["sections"] == sent
+    assert missing_sections(stored["sections"]) == []
+    sections = store.chunks.get(where={"candidate_id": "c08"}, include=["metadatas"])["metadatas"]
+    assert sorted(m["section"] for m in sections) == sorted(sent)
+
+
+def test_coverage_flags_missing_sections_and_lost_chunks(store):
+    # The fixture CVs are one-paragraph texts with no headings, so they only have a header section.
+    problems = check_coverage(store, sent=None)
+    assert "c01: no 'experience' chunks" in problems
+    assert not any(p.startswith("c01: sent") for p in problems)
+
+    sent = {"c01": store.section_counts()["c01"]["sections"] + Counter(experience=2)}
+    assert any(p.startswith("c01: sent") for p in check_coverage(store, sent=sent))
+
+
+def test_coverage_fails_on_empty_store():
+    empty = CandidateStore(FakeEmbedder(), client=chromadb.EphemeralClient(), prefix=f"e{uuid.uuid4().hex[:8]}")
+    assert check_coverage(empty) == ["store is empty"]
+
+
+def test_coverage_passes_for_complete_cv(store):
+    for cid in ("c01", "c04"):
+        store.chunks.delete(where={"candidate_id": cid})
+    sent = {"c08": store.upsert("c08", make_fields("Johannes Becker", "Senior Embedded Engineer", "Germany",
+                                                   "senior", 14, ["C++"], ["German"]), FULL_CV)}
+    assert check_coverage(store, sent=sent) == []
