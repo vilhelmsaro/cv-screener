@@ -3,8 +3,7 @@ services:
     image: chromadb/chroma:1.5.9   # keep in sync with the chromadb pin in pyproject.toml
     volumes:
       - chroma-data:/data
-    ports:
-      - "8000:8000"
+    # No host port: the app reaches Chroma on the compose network, and publishing 8000 fails if it is taken.
 
   app:
     build: .
