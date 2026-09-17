@@ -153,7 +153,7 @@ def _inline_section_label(line: str, current: str) -> tuple[str | None, str]:
     return None, ""
 
 
-def _split_at_boundaries(blocks: list[str], name: str) -> list[str]:
+def _split_at_boundaries(blocks: list[str]) -> list[str]:
     """Cut blocks where a heading, a labelled section or an entry header sits inside them.
 
     PDF layout blocks follow the page, not the document: a real CV often ends a paragraph block with the
@@ -213,7 +213,7 @@ def chunk_cv(text: str, name: str = "", max_chars: int = 2000) -> list[Chunk]:
     heading as printed, so a snippet shows where the evidence came from. No block is dropped.
     """
     blocks = [b.strip() for b in re.split(r"\n\s*\n", text) if b.strip()]
-    blocks = [b for b in _split_at_boundaries(blocks, name) if b.strip()]
+    blocks = [b for b in _split_at_boundaries(blocks) if b.strip()]
     sections: list[tuple[str, str, list[str]]] = [(HEADER, "", [])]  # (key, printed heading, blocks)
     for block in blocks:
         if key := _section_of(block):

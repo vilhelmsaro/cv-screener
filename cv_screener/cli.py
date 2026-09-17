@@ -105,6 +105,7 @@ def chat():
 def run_eval():
     """Run the eval suite and print pass/fail."""
     import sys
+
     from .config import ROOT
     sys.path.insert(0, str(ROOT))
     from evals.run_evals import main

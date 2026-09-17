@@ -19,7 +19,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8"]
+dev = ["pytest>=8", "ruff>=0.6"]
 
 [project.scripts]
 cvs = "cv_screener.cli:app"
@@ -30,6 +30,12 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["cv_screener"]
+
+[tool.ruff]
+line-length = 118
+
+[tool.ruff.lint]
+select = ["F", "E", "I", "UP"]  # pyflakes, pycodestyle, import order, pyupgrade
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

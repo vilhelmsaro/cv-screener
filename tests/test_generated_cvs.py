@@ -49,7 +49,8 @@ def test_every_section_and_entry_is_chunked(pdf: Path, profile_json: Path):
 
     # Each job is one chunk holding its own title, company and every bullet.
     for job in profile.experience:
-        matches = [c for c in by_section["experience"] if flat(f"{job.title} {job.start}") in c and flat(job.company) in c]
+        matches = [c for c in by_section["experience"]
+                   if flat(f"{job.title} {job.start}") in c and flat(job.company) in c]
         assert len(matches) == 1, f"{job.title} @ {job.company}"
         for bullet in job.bullets:
             assert flat(bullet) in matches[0], bullet[:60]

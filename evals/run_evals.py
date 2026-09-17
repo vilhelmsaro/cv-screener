@@ -15,7 +15,8 @@ from cv_screener.store import fold
 
 HERE = Path(__file__).parent
 NO_MATCH_HINTS = ["no candidate", "no one", "nobody", "none of the candidates", "no matching",
-                  "not find any", "couldn't find", "could not find", "no candidates", "doesn't appear", "not in the dataset"]
+                  "not find any", "couldn't find", "could not find", "no candidates", "doesn't appear",
+                  "not in the dataset"]
 
 
 def mentioned(text: str, names: list[str]) -> set[str]:

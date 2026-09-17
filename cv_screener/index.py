@@ -69,7 +69,8 @@ def run() -> None:
             text, fields, unresolved = read_cv(pdf)
             if "country" in unresolved:
                 fields.country = _country_from_llm(text, fields.full_name)
-                console.print(f"  {pdf.stem}: country not readable by rules, LLM says {fields.country or 'nothing'!r}")
+                console.print(f"  {pdf.stem}: country not readable by rules, "
+                              f"LLM says {fields.country or 'nothing'!r}")
             sent[pdf.stem] = store.upsert(pdf.stem, fields, text)
         except Exception as e:  # keep indexing the others; upsert is idempotent, so a rerun is safe
             failed.append(pdf.stem)

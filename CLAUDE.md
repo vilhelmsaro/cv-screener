@@ -4,6 +4,7 @@ Project: CV Screener test task. Python only. See README.md for architecture.
 
 ## Commands
 - `pytest` — offline tests, must pass without OPENROUTER_API_KEY
+- `ruff check .` — lint (config in pyproject.toml)
 - `cvs generate | index | coverage | chat | ask "..." | eval`
 - Docker: `docker compose run --rm app <command>`
 

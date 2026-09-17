@@ -18,7 +18,8 @@ SEEDS: list[Seed] = [
          stack="Python, PyTorch, Kubernetes, MLOps, feature stores, LLM fine-tuning, recommender systems",
          education="PhD Computer Science (ML), IIT Madras",
          style="dense senior CV with publications and a projects section", template="modern",
-         photo="woman, late 30s, South Indian; standing by a window in a bright modern office, daylight from the side, smart casual"),
+         photo="woman, late 30s, South Indian; "
+                "standing by a window in a bright modern office, daylight from the side, smart casual"),
     Seed(id="c03", name="Tomasz Nowak", role="Java Backend Developer", level="mid", years=5,
          location="Kraków, Poland", languages="Polish (native), English (B2), German (A2)",
          stack="Java 17, Spring Boot, Kafka, PostgreSQL, Docker",
@@ -30,7 +31,8 @@ SEEDS: list[Seed] = [
          stack="React, TypeScript, HTML/CSS, Tailwind, Git",
          education="Bootcamp certificate + BA Linguistics, Yerevan State University",
          style="one page, career switcher, includes pet projects", template="modern",
-         photo="woman, mid 20s, Armenian; outdoors on a city street with soft blurred buildings, overcast light, casual jacket"),
+         photo="woman, mid 20s, Armenian; "
+                "outdoors on a city street with soft blurred buildings, overcast light, casual jacket"),
     Seed(id="c05", name="Mateo Rojas Quintero", role="Site Reliability Engineer", level="senior", years=7,
          location="Bogotá, Colombia (remote)", languages="Spanish (native), English (C1), Portuguese (B1)",
          stack="AWS, Terraform, Kubernetes, Go, Prometheus, incident management",
@@ -48,7 +50,8 @@ SEEDS: list[Seed] = [
          stack="Figma, user research, design systems, prototyping (no programming)",
          education="Master Design d'interaction, ENSCI Les Ateliers",
          style="designer CV, portfolio link, case studies", template="modern",
-         photo="woman, around 30, Moroccan; exposed brick wall in a design studio, natural light, stylish minimal top"),
+         photo="woman, around 30, Moroccan; "
+                "exposed brick wall in a design studio, natural light, stylish minimal top"),
     Seed(id="c08", name="Johannes Becker", role="Senior Embedded Software Engineer", level="senior", years=14,
          location="Munich, Germany", languages="German (native), English (C1)",
          stack="C, C++, RTOS, AUTOSAR, CAN bus, automotive safety (ISO 26262)",
@@ -66,13 +69,15 @@ SEEDS: list[Seed] = [
          stack="Node.js, TypeScript, hiring, org design, delivery management",
          education="BS Computer Science, University of Texas at Austin",
          style="US resume, no photo tradition but include one, leadership outcomes", template="classic",
-         photo="woman, early 40s, American; corporate headshot against a mid-grey backdrop, confident smile, blouse and blazer"),
+         photo="woman, early 40s, American; "
+                "corporate headshot against a mid-grey backdrop, confident smile, blouse and blazer"),
     Seed(id="c11", name="Elena Popescu", role="QA Automation Engineer", level="mid", years=6,
          location="Bucharest, Romania", languages="Romanian (native), English (C1), Italian (B2)",
          stack="Python, Playwright, Selenium, pytest, CI/CD, API testing",
          education="BSc Automatic Control and Computers, Politehnica University of Bucharest",
          style="testing strategy, bug metrics", template="modern",
-         photo="woman, early 30s, Romanian; cozy cafe interior with bokeh lights behind, indoor warm light, knit sweater"),
+         photo="woman, early 30s, Romanian; "
+                "cozy cafe interior with bokeh lights behind, indoor warm light, knit sweater"),
     Seed(id="c12", name="Daniel Kim", role="Junior ML Researcher", level="junior", years=1,
          location="Toronto, Canada", languages="English (native), Korean (fluent)",
          stack="Python, PyTorch, Hugging Face Transformers, NLP evaluation",

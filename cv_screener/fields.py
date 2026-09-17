@@ -9,8 +9,8 @@ import re
 from datetime import date
 
 from .countries import canonical_country
-from .parsing import split_top_level
 from .models import ExtractedFields
+from .parsing import split_top_level
 from .store import HEADER, MONTH, Chunk, date_line_index, fold
 
 # First match wins, checked against the current job title.
