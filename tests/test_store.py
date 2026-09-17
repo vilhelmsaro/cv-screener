@@ -3,7 +3,7 @@ import pymupdf
 from cv_screener.index import pdf_text
 from cv_screener.store import CandidateStore, chunk_text, norm
 
-from .conftest import _fields
+from .fakes import make_fields
 
 
 def test_field_filters_are_exact(store):
@@ -28,7 +28,7 @@ def test_semantic_plus_filter(store):
 
 
 def test_reindex_drops_removed_skills(store):
-    store.upsert("c08", _fields("Johannes Becker", "Senior Embedded Engineer", "Germany", "senior", 14,
+    store.upsert("c08", make_fields("Johannes Becker", "Senior Embedded Engineer", "Germany", "senior", 14,
                                 ["C"], ["German"]), "Johannes Becker\n\nFirmware in C.")
     assert store.search(skills=["C++"]) == []
     assert "Johannes Becker" not in {h.name for h in store.search(languages=["English"])}

@@ -6,7 +6,6 @@ Requires a populated index and OPENROUTER_API_KEY. Output is also saved to evals
 from __future__ import annotations
 
 import re
-import sys
 from pathlib import Path
 
 import yaml
@@ -52,7 +51,6 @@ def check_case(case: dict, answer: str, messages, all_names: list[str]) -> list[
 
 
 def main() -> int:
-    sys.path.insert(0, str(HERE.parent))
     from cv_screener.agent import Deps, build_agent
     from cv_screener.llm import OpenRouterEmbedder
     from cv_screener.store import CandidateStore

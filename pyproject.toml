@@ -32,3 +32,4 @@ packages = ["cv_screener"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]  # evals/ is imported by tests but not packaged
