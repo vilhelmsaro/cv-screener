@@ -14,7 +14,7 @@ import pytest
 
 from cv_screener.config import CVS_DIR, PROFILES_DIR
 from cv_screener.countries import canonical_country
-from cv_screener.fields import seniority_for
+from cv_screener.generate import seed_mismatches
 from cv_screener.index import pdf_text, read_cv
 from cv_screener.models import CandidateProfile
 from cv_screener.seeds import SEEDS
@@ -69,9 +69,16 @@ def test_fields_match_answer_key(pdf: Path, profile_json: Path):
     assert fields.current_title == profile.experience[0].title
     assert (fields.city, fields.country) == (location[0], canonical_country(location[-1]))
     assert fields.years_experience == seed["years"]
-    # The seed level is the intent; the CV's printed title is the truth (c11 was generated as "Senior").
-    assert fields.seniority == seniority_for(profile.experience[0].title, seed["years"])
+    assert fields.seniority == seed["level"]
     assert fields.languages == [lang.name for lang in profile.languages]
     assert fields.skills == [item for group in profile.skills for item in group.items]
     assert fields.highest_education in [e.degree for e in profile.education]
     assert flat(profile.summary) in flat(fields.summary)
+
+
+@pytest.mark.parametrize("pdf, profile_json", PAIRS, ids=[p.stem for p, _ in PAIRS])
+def test_generated_profile_matches_seed(pdf: Path, profile_json: Path):
+    # Fails for CVs generated before the seed check existed; regenerate with `cvs generate --only <id>`
+    # after deleting data/profiles/<id>.json.
+    profile = CandidateProfile.model_validate(json.loads(profile_json.read_text(encoding="utf-8")))
+    assert seed_mismatches(next(s for s in SEEDS if s["id"] == pdf.stem), profile) == []

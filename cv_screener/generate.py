@@ -7,9 +7,11 @@ from datetime import date
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
+from pydantic_ai import ModelRetry
 from rich.console import Console
 
 from .config import CVS_DIR, PHOTOS_DIR, PROFILES_DIR, settings
+from .fields import parse_languages, seniority_for, years_from_text
 from .llm import generate_image, structured_agent
 from .models import CandidateProfile
 from .seeds import SEEDS
@@ -27,12 +29,36 @@ Make it read like a real person's CV, not a template:
 - specific bullets with concrete numbers, some short, some long; not every bullet has a metric
 - small human quirks: an older unrelated job, a short gap or a side project, uneven section lengths
 - juniors get 1-2 roles and a short CV, seniors 3-5 roles
+- the current (first) job title matches the level: no "Senior", "Lead" or "Staff" for a mid-level person
+- the summary states the years exactly, e.g. "with 6 years of experience"
 - email and phone in the local format; links look plausible (linkedin/github/portfolio as fits the role)
 - do NOT add spoken languages or core technologies beyond those given (minor tools are fine)."""
 
 
+def seed_mismatches(seed: dict, profile: CandidateProfile) -> list[str]:
+    """Seed facts the CV gets wrong, judged by the same rules indexing uses to read them back from the PDF."""
+    problems = []
+    title = profile.experience[0].title if profile.experience else ""
+    if (level := seniority_for(title, seed["years"])) != seed["level"]:
+        problems.append(f"the current job title {title!r} reads as {level}, but the person is {seed['level']}")
+    if (years := years_from_text(profile.summary)) != seed["years"]:
+        problems.append(f"the summary must say \"{seed['years']} years of experience\" (found: {years})")
+    expected = {lang.casefold() for lang in parse_languages([seed["languages"]])}
+    if (actual := {lang.name.casefold() for lang in profile.languages}) != expected:
+        problems.append(f"spoken languages must be exactly {sorted(expected)} (found: {sorted(actual)})")
+    return problems
+
+
 def _profile(seed: dict) -> CandidateProfile:
     agent = structured_agent(settings.gen_model, CandidateProfile, GEN_INSTRUCTIONS, max_tokens=8000)
+
+    @agent.output_validator
+    def matches_seed(profile: CandidateProfile) -> CandidateProfile:
+        # The model gets the problems back and rewrites the CV; after the retries run out the candidate fails.
+        if problems := seed_mismatches(seed, profile):
+            raise ModelRetry("Fix these facts and return the whole CV again: " + "; ".join(problems))
+        return profile
+
     facts = "\n".join(f"{k}: {v}" for k, v in seed.items() if k not in {"id", "template", "photo"})
     # Without today's date the model cannot make "Present" roles and total years add up.
     today = date.today().strftime("%B %Y")
