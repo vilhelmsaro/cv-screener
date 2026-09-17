@@ -1,0 +1,11 @@
+.env
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+data/chroma/
+data/index/
+data/photos/
+data/profiles/
+data/cvs/
+evals/last_run.txt

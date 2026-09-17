@@ -1,0 +1,23 @@
+services:
+  chroma:
+    image: chromadb/chroma:1.5.9   # keep in sync with the chromadb pin in pyproject.toml
+    volumes:
+      - chroma-data:/data
+    ports:
+      - "8000:8000"
+
+  app:
+    build: .
+    env_file: .env
+    environment:
+      CHROMA_HOST: chroma
+      CHROMA_PORT: "8000"
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      - chroma
+    stdin_open: true
+    tty: true
+
+volumes:
+  chroma-data:
