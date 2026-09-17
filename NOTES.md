@@ -14,6 +14,8 @@ TODO: run evals and paste results
 - Skill matching via filters is exact after normalization ("PyTorch" vs "Pytorch" ok, "Java 17" and
   "Docker (basic)" also match "Java" / "Docker", "ML" vs "machine learning" not); the agent is instructed to
   fall back to semantic search.
+- Entries are separated by a date range on its own line. A CV that prints "Analyst, Acme (2020 - 2022)" on
+  one line still indexes and keeps its fields, but its jobs land in one chunk instead of one each.
 - Field rules assume English headings and common CV conventions (a "Skills" section, "N years of experience"
   or dated jobs, "City, Country" next to the email). All 12 generated CVs parse fully without the LLM; other
   CVs may leave a field empty rather than get a wrong value.

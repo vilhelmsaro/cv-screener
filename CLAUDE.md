@@ -13,7 +13,8 @@ Project: CV Screener test task. Python only. See README.md for architecture.
 - Keep `seeds.py` names stable: evals in `evals/cases.yaml` depend on them.
 - Skills/languages are stored as normalized list metadata (`skill_keys`, `lang_keys`) and filtered with `$contains`;
   Chroma rejects empty lists, so omit the key instead.
-- Indexing reads the PDFs. Generated JSON in `data/profiles` may be used as a test answer key, never as index input.
+- Indexing reads the PDFs. `seeds.py` and `data/profiles` are generator input and test answer keys only; the
+  index/search/agent path must never import them (`tests/test_boundaries.py` enforces this).
 - Keep `chromadb` pin in pyproject.toml equal to the image tag in docker-compose.yml.
 - Never commit `.env` or anything under `data/` except `.gitkeep`.
 - Commit messages in English, imperative mood, one logical change per commit.

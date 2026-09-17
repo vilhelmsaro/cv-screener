@@ -72,7 +72,9 @@ pytest
   Each checks tool usage, expected/forbidden names, and **grounding**: every candidate named in the answer
   must appear in tool results. Results are written to `evals/last_run.txt`.
 - `tests/` runs offline with a hashing fake embedder, an in-memory Chroma, and PydanticAI's `TestModel`.
-  `tests/test_chunking.py` pins the chunking rules and edge cases. `tests/test_generated_cvs.py` checks the
+  `tests/test_chunking.py` pins the chunking rules and edge cases. `tests/test_foreign_cvs.py` indexes CVs
+  in layouts our templates never produce. `tests/test_boundaries.py` keeps the read path from importing the
+  seeds or the generated JSON, which a real deployment would not have. `tests/test_generated_cvs.py` checks the
   real PDFs in `data/cvs` (skipped until `generate` has run): every job and degree is exactly one chunk with
   all its bullets, and every extracted field matches the answer key (the generator's JSON and seeds, used
   only for checking). `tests/test_fields.py` covers each extraction rule on small inputs.

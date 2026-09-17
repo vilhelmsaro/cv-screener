@@ -147,9 +147,8 @@ def years_from_dates(entries: list[Chunk], today: date) -> int:
     for chunk in entries:
         lines = body(chunk)
         idx = date_line_index("\n".join(lines))
-        if idx is None:
-            continue
-        text = " ".join(lines[idx:idx + 2])  # a wrapped range continues on the next line
+        # A date line of its own is the usual layout; otherwise look for dates inside the first lines.
+        text = " ".join(lines[idx:idx + 2] if idx is not None else lines[:2])  # a range can wrap
         if not (m := _RANGE.search(text)):
             continue
         start = _month_index(m.group(1), m.group(2), m.group(3), default=1)
@@ -170,10 +169,17 @@ def years_from_dates(entries: list[Chunk], today: date) -> int:
 
 
 def entry_title(chunk: Chunk) -> str:
-    """Text above the date line of a job or degree entry: its title (possibly wrapped)."""
+    """Title of a job or degree entry: the text above its date line, or the first line without its dates.
+
+    CVs that print "Software Engineer, Acme (Jan 2019 - Mar 2021)" on one line keep only the part before
+    the dates.
+    """
     lines = body(chunk)
     idx = date_line_index("\n".join(lines))
-    return " ".join(line.strip() for line in lines[:idx if idx else 1])
+    if idx:
+        return " ".join(line.strip() for line in lines[:idx])
+    first = lines[0] if lines else ""
+    return _RANGE.split(first)[0].strip(" ,;-–—([|") if _RANGE.search(first) else first.strip()
 
 
 def seniority_for(title: str, years: int) -> str:
