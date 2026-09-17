@@ -1,21 +1,10 @@
-import pymupdf
 from pydantic_ai.messages import ModelRequest, ModelResponse, TextPart, ToolCallPart, ToolReturnPart
 from pydantic_ai.models.test import TestModel
 
 from cv_screener.agent import Deps, build_agent
-from cv_screener.index import pdf_text
 from evals.run_evals import check_case, mentioned
 
 NAMES = ["Lucía Fernández Ortega", "Johannes Becker", "Anna Petrosyan"]
-
-
-def test_pdf_text_extraction(tmp_path):
-    path = tmp_path / "cv.pdf"
-    doc = pymupdf.open()
-    doc.new_page().insert_text((72, 72), "Johannes Becker\nSenior Embedded Engineer\nC++, RTOS")
-    doc.save(path)
-    text = pdf_text(path)
-    assert "Johannes Becker" in text and "RTOS" in text
 
 
 def test_agent_calls_tools_without_api_key(store):

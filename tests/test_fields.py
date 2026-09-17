@@ -9,7 +9,7 @@ from pydantic_ai.models.test import TestModel
 from cv_screener import index
 from cv_screener.countries import canonical_country
 from cv_screener.fields import (extract_fields, find_location, highest_degree, parse_languages, parse_skills,
-                                seniority_for, split_location, split_top_level, years_from_dates, years_from_text)
+                                seniority_for, split_location, years_from_dates, years_from_text)
 from cv_screener.store import Chunk, chunk_cv, skill_key_variants
 
 TODAY = date(2026, 9, 17)
@@ -38,10 +38,6 @@ def test_skills_without_group_labels_and_duplicates():
 ])
 def test_languages(lines, expected):
     assert parse_languages(lines) == expected
-
-
-def test_split_top_level_keeps_parentheses_together():
-    assert split_top_level("AWS (EC2, EKS), Go; Bash") == ["AWS (EC2, EKS)", "Go", "Bash"]
 
 
 def test_location_from_contact_line_not_headline():

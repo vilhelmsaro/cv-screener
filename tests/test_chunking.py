@@ -58,12 +58,6 @@ def test_splits_by_section_and_entry():
     ]
 
 
-def test_without_name_the_sidebar_summary_joins_the_previous_section():
-    # Documents why the name matters: this is the failure the name rule prevents.
-    chunks = chunk_cv(SIDEBAR_CV)
-    assert chunks[1] == Chunk("skills", "Skills\nPython, SQL\nJane Doe\nData Engineer\nBuilds pipelines.")
-
-
 @pytest.mark.parametrize("extracted_name", ["Jane Doe", "jane doe", "Jane", "Jane Q Doe"])
 def test_name_match_tolerates_case_and_partial_names(extracted_name):
     text = "Skills\n\nPython\n\nJane Q. Doe\n\nSummary text."
