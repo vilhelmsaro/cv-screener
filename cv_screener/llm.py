@@ -17,8 +17,10 @@ def openrouter_model(name: str) -> OpenRouterModel:
     return OpenRouterModel(name, provider=OpenRouterProvider(api_key=settings.require_key()))
 
 
-def structured_agent(model_name: str, output_type: type, instructions: str) -> Agent:
-    return Agent(openrouter_model(model_name), output_type=output_type, instructions=instructions, retries=2)
+def structured_agent(model_name: str, output_type: type, instructions: str, max_tokens: int = 4000) -> Agent:
+    # Without max_tokens OpenRouter reserves the model's full output limit (65K for some) against credits.
+    return Agent(openrouter_model(model_name), output_type=output_type, instructions=instructions, retries=2,
+                 model_settings={"max_tokens": max_tokens})
 
 
 class Embedder(Protocol):

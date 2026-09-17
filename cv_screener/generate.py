@@ -32,7 +32,7 @@ Make it read like a real person's CV, not a template:
 
 
 def _profile(seed: dict) -> CandidateProfile:
-    agent = structured_agent(settings.gen_model, CandidateProfile, GEN_INSTRUCTIONS)
+    agent = structured_agent(settings.gen_model, CandidateProfile, GEN_INSTRUCTIONS, max_tokens=8000)
     facts = "\n".join(f"{k}: {v}" for k, v in seed.items() if k not in {"id", "template", "photo"})
     # Without today's date the model cannot make "Present" roles and total years add up.
     today = date.today().strftime("%B %Y")
