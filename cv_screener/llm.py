@@ -5,12 +5,15 @@ import base64
 from typing import Protocol
 
 import httpx
+import pydantic_ai
 from openai import OpenAI
 from pydantic_ai import Agent
 from pydantic_ai.models.openrouter import OpenRouterModel
 from pydantic_ai.providers.openrouter import OpenRouterProvider
 
 from .config import OPENROUTER_BASE_URL, settings
+
+pydantic_ai.BANNER_ENABLED = False  # the CLI owns its output
 
 
 def openrouter_model(name: str) -> OpenRouterModel:

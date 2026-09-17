@@ -7,6 +7,31 @@ from rich.markdown import Markdown
 
 app = typer.Typer(no_args_is_help=True, add_completion=False)
 console = Console()
+err_console = Console(stderr=True)  # tool trace: visible in the terminal, kept out of a piped answer
+
+
+def _print_trace(messages) -> None:
+    """One dim line per tool call and per result, so it is visible what the answer is based on."""
+    from pydantic_ai.messages import ToolCallPart, ToolReturnPart
+    for message in messages:
+        for part in message.parts:
+            if isinstance(part, ToolCallPart):
+                args = ", ".join(f"{k}={v!r}" for k, v in part.args_as_dict().items())
+                line = f"-> {part.tool_name}({args})"
+            elif isinstance(part, ToolReturnPart):
+                content = part.content
+                if isinstance(content, list):
+                    line = f"<- {len(content)} candidate(s): " + ", ".join(h["name"] for h in content)
+                elif isinstance(content, dict) and "error" in content:
+                    line = f"<- {content['error']}"
+                elif isinstance(content, dict) and "fields" in content:
+                    line = f"<- CV of {content['fields']['name']}"
+                else:
+                    line = "<- filter values"
+            else:
+                continue
+            # markup=False: args like ['Spanish'] would be read as Rich markup; soft_wrap: no hard wrapping.
+            err_console.print(line, style="dim", markup=False, soft_wrap=True)
 
 
 @app.command()
@@ -36,14 +61,20 @@ def _agent_and_deps():
     from .agent import Deps, build_agent
     from .llm import OpenRouterEmbedder
     from .store import CandidateStore
-    return build_agent(), Deps(store=CandidateStore(OpenRouterEmbedder()))
+    store = CandidateStore(OpenRouterEmbedder())
+    if store.profiles.count() == 0:  # otherwise every question looks like a genuine "nobody matches"
+        console.print("The index is empty. Run `cvs generate` and `cvs index` first.")
+        raise typer.Exit(2)
+    return build_agent(), Deps(store=store)
 
 
 @app.command()
 def ask(question: str):
     """Ask one question and exit."""
     agent, deps = _agent_and_deps()
-    console.print(Markdown(agent.run_sync(question, deps=deps).output))
+    result = agent.run_sync(question, deps=deps)
+    _print_trace(result.new_messages())
+    console.print(Markdown(result.output))
 
 
 @app.command()
@@ -53,7 +84,10 @@ def chat():
     history = []
     console.print("[bold]CV Screener chat[/] - ask about the candidates.")
     while True:
-        q = console.input("[cyan]you> [/]").strip()
+        try:
+            q = console.input("[cyan]you> [/]").strip()
+        except (EOFError, KeyboardInterrupt):  # Ctrl-D / Ctrl-C end the session, not with a traceback
+            break
         if q.lower() in {"", "exit", "quit"}:
             break
         try:
@@ -62,6 +96,7 @@ def chat():
             console.print(f"[red]Error:[/] {e!r}")
             continue
         history = result.all_messages()
+        _print_trace(result.new_messages())
         console.print(Markdown(result.output))
 
 
