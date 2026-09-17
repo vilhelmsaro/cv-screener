@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+import time
 import unicodedata
 from dataclasses import dataclass, field
 
@@ -25,9 +26,17 @@ def fold(text: str) -> str:
     return unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode().lower()
 
 
-def make_client() -> chromadb.ClientAPI:
+def make_client(attempts: int = 15) -> chromadb.ClientAPI:
     if settings.chroma_host:
-        return chromadb.HttpClient(host=settings.chroma_host, port=settings.chroma_port)
+        # docker compose starts the app as soon as the Chroma container exists, not when it accepts
+        # connections, and the Chroma image has no shell for a healthcheck. Retry instead.
+        for attempt in range(attempts):
+            try:
+                return chromadb.HttpClient(host=settings.chroma_host, port=settings.chroma_port)
+            except ValueError:  # raised by HttpClient when the server is unreachable
+                if attempt == attempts - 1:
+                    raise
+                time.sleep(1)
     CHROMA_DIR.mkdir(parents=True, exist_ok=True)
     return chromadb.PersistentClient(path=str(CHROMA_DIR))
 
