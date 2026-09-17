@@ -32,10 +32,18 @@ def run() -> None:
         raise SystemExit("No PDFs in data/cvs. Run `cvs generate` first.")
     store = CandidateStore(OpenRouterEmbedder())
     extractor = structured_agent(settings.extract_model, ExtractedFields, EXTRACT_INSTRUCTIONS)
+    failed = []
     for pdf in pdfs:
-        text = pdf_text(pdf)
-        fields = extractor.run_sync(text).output
-        store.upsert(pdf.stem, fields, text)
+        try:
+            text = pdf_text(pdf)
+            fields = extractor.run_sync(text).output
+            store.upsert(pdf.stem, fields, text)
+        except Exception as e:  # keep indexing the others; upsert is idempotent, so a rerun is safe
+            failed.append(pdf.stem)
+            console.print(f"[red]failed {pdf.stem}:[/] {e!r}")
+            continue
         console.print(f"indexed {pdf.stem}: {fields.full_name} | {fields.seniority} | "
                       f"{', '.join(fields.languages)} | {len(fields.skills)} skills")
     console.print(f"[green]Done:[/] {store.profiles.count()} candidates, {store.chunks.count()} chunks")
+    if failed:
+        raise SystemExit(f"Failed to index: {', '.join(failed)}. Rerun `cvs index`.")

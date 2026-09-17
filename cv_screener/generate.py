@@ -58,22 +58,34 @@ def _render(seed: dict, profile: CandidateProfile, photo: Path, out: Path) -> No
     HTML(string=html).write_pdf(out)
 
 
+def _build(seed: dict, force: bool) -> Path:
+    pid = seed["id"]
+    prof_path, photo_path, pdf_path = PROFILES_DIR / f"{pid}.json", PHOTOS_DIR / f"{pid}.png", CVS_DIR / f"{pid}.pdf"
+    if force or not prof_path.exists():  # cache: reruns cost nothing
+        prof_path.write_text(_profile(seed).model_dump_json(indent=2), encoding="utf-8")
+    profile = CandidateProfile.model_validate(json.loads(prof_path.read_text(encoding="utf-8")))
+
+    if force or not photo_path.exists():
+        _photo(seed, photo_path)
+
+    _render(seed, profile, photo_path, pdf_path)
+    return pdf_path
+
+
 def run(force: bool = False, only: list[str] | None = None) -> None:
     for d in (PROFILES_DIR, PHOTOS_DIR, CVS_DIR):
         d.mkdir(parents=True, exist_ok=True)
+    failed = []
     for seed in SEEDS:
         if only and seed["id"] not in only:
             continue
-        pid = seed["id"]
-        prof_path, photo_path, pdf_path = PROFILES_DIR / f"{pid}.json", PHOTOS_DIR / f"{pid}.png", CVS_DIR / f"{pid}.pdf"
-        console.print(f"[bold]{pid}[/] {seed['name']} - {seed['role']}")
-
-        if force or not prof_path.exists():  # cache: reruns cost nothing
-            prof_path.write_text(_profile(seed).model_dump_json(indent=2), encoding="utf-8")
-        profile = CandidateProfile.model_validate(json.loads(prof_path.read_text(encoding="utf-8")))
-
-        if force or not photo_path.exists():
-            _photo(seed, photo_path)
-
-        _render(seed, profile, photo_path, pdf_path)
+        console.print(f"[bold]{seed['id']}[/] {seed['name']} - {seed['role']}")
+        try:  # one failed candidate should not lose the rest; cached steps make a rerun cheap
+            pdf_path = _build(seed, force)
+        except Exception as e:
+            failed.append(seed["id"])
+            console.print(f"  [red]failed:[/] {e!r}")
+            continue
         console.print(f"  -> {pdf_path.relative_to(CVS_DIR.parent.parent)}")
+    if failed:
+        raise SystemExit(f"Failed: {', '.join(failed)}. Rerun `cvs generate --only <id>` for each.")

@@ -11,7 +11,7 @@ console = Console()
 
 @app.command()
 def generate(force: bool = typer.Option(False, help="Regenerate cached profiles/photos"),
-             only: list[str] = typer.Option(None, help="Seed ids, e.g. --only c01")):
+             only: list[str] | None = typer.Option(None, help="Seed ids, e.g. --only c01")):
     """Generate synthetic candidates: profile JSON, AI photo, PDF CV."""
     from . import generate as gen
     gen.run(force=force, only=only)
@@ -48,7 +48,11 @@ def chat():
         q = console.input("[cyan]you> [/]").strip()
         if q.lower() in {"", "exit", "quit"}:
             break
-        result = agent.run_sync(q, deps=deps, message_history=history)
+        try:
+            result = agent.run_sync(q, deps=deps, message_history=history)
+        except Exception as e:  # a failed API call should not end the session; history stays as it was
+            console.print(f"[red]Error:[/] {e!r}")
+            continue
         history = result.all_messages()
         console.print(Markdown(result.output))
 
