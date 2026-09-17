@@ -312,6 +312,11 @@ class CandidateStore:
         )
         return Counter(c.section for c in chunks)
 
+    def remove(self, cid: str) -> None:
+        """Forget a candidate completely: used when their PDF is gone from data/cvs."""
+        self.profiles.delete(ids=[cid])
+        self.chunks.delete(where={"candidate_id": cid})
+
     def section_counts(self) -> dict[str, dict]:
         """Chunks per section for every candidate, read back from Chroma: what search can actually see."""
         out: dict[str, dict] = {}

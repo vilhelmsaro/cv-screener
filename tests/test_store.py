@@ -127,3 +127,10 @@ def test_weak_semantic_matches_are_dropped(store):
 
     store.score_floor = 1.0  # nothing can be that close: a nonsense query returns nobody
     assert store.search(query=query) == []
+
+
+def test_remove_forgets_a_candidate(store):
+    store.remove("c01")
+    assert "c01" not in store.section_counts()
+    assert store.get("Lucía Fernández Ortega") is None
+    assert "Lucía Fernández Ortega" not in {h.name for h in store.search(languages=["Spanish"])}

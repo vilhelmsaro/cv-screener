@@ -78,6 +78,9 @@ def run() -> None:
         console.print(f"indexed {pdf.stem}: {fields.full_name} | {fields.current_title} | {fields.country} | "
                       f"{fields.seniority}, {fields.years_experience}y | {', '.join(fields.languages)} | "
                       f"{len(fields.skills)} skills")
+    for cid in sorted(set(store.section_counts()) - {pdf.stem for pdf in pdfs}):
+        store.remove(cid)  # its PDF is gone from data/cvs, so it must not stay searchable
+        console.print(f"removed {cid}: no PDF in {CVS_DIR.name}/ any more")
     console.print(f"[green]Done:[/] {store.profiles.count()} candidates, {store.chunks.count()} chunks")
     problems = check_coverage(store, sent)
     if failed or problems:
