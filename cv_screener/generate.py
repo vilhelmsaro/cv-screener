@@ -41,9 +41,8 @@ def _profile(seed: dict) -> CandidateProfile:
 
 def _photo(seed: dict, path: Path) -> None:
     prompt = (
-        f"Professional headshot photo for a CV: {seed['photo']}, working as {seed['role']}. "
-        "Natural light, neutral background, head and shoulders, realistic photograph, not illustrated, "
-        "no text, square framing."
+        f"Headshot photo for a CV: {seed['photo']}, working as {seed['role']}. "
+        "Head and shoulders, realistic photograph, not illustrated, no text, square framing."
     )
     path.write_bytes(generate_image(prompt))
 
