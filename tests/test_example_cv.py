@@ -18,7 +18,7 @@ from .fakes import FakeEmbedder
 
 EXAMPLES = sorted((Path(__file__).resolve().parent.parent / "examples").glob("*.pdf"))
 pytestmark = pytest.mark.skipif(not EXAMPLES, reason="no example CV")
-CV = EXAMPLES[0]
+CV = EXAMPLES[0] if EXAMPLES else None  # module level: must not raise when examples/ is absent
 
 
 @pytest.fixture(scope="module")

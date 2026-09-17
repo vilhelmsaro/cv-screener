@@ -8,5 +8,6 @@ COPY pyproject.toml README.md ./
 COPY cv_screener ./cv_screener
 RUN pip install --no-cache-dir -e ".[dev]"
 COPY evals ./evals
+COPY examples ./examples
 COPY tests ./tests
 ENTRYPOINT ["cvs"]
