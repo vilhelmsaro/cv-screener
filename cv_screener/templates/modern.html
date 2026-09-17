@@ -1,15 +1,19 @@
 {% import "base_macros.html" as m %}<html><head><meta charset="utf-8"><style>
-@page { size: A4; margin: 0; }
-body { margin: 0; font-family: "DejaVu Sans", Arial, sans-serif; font-size: 9pt; color: #222; display: flex; min-height: 297mm; }
-aside { width: 64mm; background: #1f3a4d; color: #eef3f6; padding: 14mm 7mm; box-sizing: border-box; }
+/* Page margins apply to every page, and the fixed .strip repeats on every page, so page 2+
+   keeps the sidebar color and its margins instead of running into the edges. */
+@page { size: A4; margin: 14mm 12mm 14mm 0; }
+.strip { position: fixed; top: -14mm; left: 0; width: 64mm; height: 300mm; background: #1f3a4d; z-index: -1; }
+body { margin: 0; font-family: "DejaVu Sans", Arial, sans-serif; font-size: 9pt; color: #222; }
+aside { float: left; width: 64mm; color: #eef3f6; padding: 0 7mm; box-sizing: border-box; }
 aside img { width: 38mm; height: 38mm; border-radius: 50%; object-fit: cover; display: block; margin: 0 auto 8mm; }
 aside h3 { font-size: 9.5pt; text-transform: uppercase; color: #9cc3dd; margin: 10px 0 4px; }
-aside .sg { margin-bottom: 4px; } main { flex: 1; padding: 14mm 12mm; }
+aside .sg { margin-bottom: 4px; } aside div { overflow-wrap: anywhere; } main { margin-left: 76mm; }
 h1 { margin: 0; font-size: 22pt; color: #1f3a4d; } .hl { font-size: 11pt; color: #3f7ea6; margin-bottom: 8px; }
 h2 { font-size: 11pt; color: #1f3a4d; border-bottom: 2px solid #3f7ea6; margin: 12px 0 6px; padding-bottom: 2px; }
 .jh { display: flex; justify-content: space-between; } .t { font-weight: bold; } .d { color: #777; font-size: 8.5pt; }
 .co { color: #3f7ea6; } ul { margin: 3px 0 7px 14px; padding: 0; } .job { margin-bottom: 5px; page-break-inside: avoid; }
 </style></head><body>
+<div class="strip"></div>
 <aside><img src="{{ photo }}">
 <h3>Contact</h3><div>{{ p.email }}</div><div>{{ p.phone }}</div><div>{{ p.location }}</div>
 {% for l in p.links %}<div>{{ l }}</div>{% endfor %}
