@@ -43,7 +43,7 @@ pytest
 1. **Generation** (`cv_screener/generate.py`). `seeds.py` fixes a diversity matrix: 12 people with different
    roles, levels, countries, stacks, education and languages. An LLM expands each seed into a full
    `CandidateProfile` (validated with Pydantic), an image model generates the headshot, and one of three
-   HTML templates (classic, sidebar, compact US) is rendered to PDF. Profiles and photos are cached, so
+   HTML templates (`classic`, `modern` with a sidebar, `compact` US Letter) is rendered to PDF. Profiles and photos are cached, so
    re-runs are free (`--force` regenerates).
 2. **Indexing** (`cv_screener/index.py`, `store.py`). Text is extracted from the **PDFs** (not from the
    source JSON), an LLM extracts `ExtractedFields`, and two Chroma collections are written:

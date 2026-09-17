@@ -9,10 +9,13 @@ TODO: run evals and paste results
 
 ## Not done / known issues
 - TODO: fill in after the run.
-- Photo generation depends on the chosen OpenRouter image model; if it fails the run stops for that candidate.
+- Photo generation depends on the chosen OpenRouter image model. A failed candidate is skipped and listed at the end;
+  rerun with `cvs generate --only <id>`.
 - Skill matching via filters is exact after normalization ("PyTorch" vs "Pytorch" ok, "ML" vs "machine learning" not);
   the agent is instructed to fall back to semantic search.
-- No hybrid keyword (BM25) ranking; semantic + metadata filters only.
+- No keyword (BM25) ranking; search is metadata filters + semantic similarity over chunks. The profile-level
+  embedding is stored but not queried yet.
+- Chunks come from PDF layout blocks; on the two-column `modern` template the sidebar is read before the main column.
 
 ## Next steps
 - BM25 + vector fusion, reranker for "best fit" questions.

@@ -1,7 +1,7 @@
 [project]
 name = "cv-screener"
 version = "0.1.0"
-description = "Synthetic CV generation, hybrid search and a grounded CLI agent"
+description = "Synthetic CV generation, field + semantic search and a grounded CLI agent"
 requires-python = ">=3.11"
 dependencies = [
   "pydantic-ai-slim[openrouter]>=2.44,<3",
