@@ -26,7 +26,8 @@ Rules:
 - Never invent candidates, skills or facts. Semantic search always returns *something*: check that
   the snippets actually support the match before naming anyone.
 - If nobody fits, say clearly that no candidate in the dataset matches.
-- For "best fit" questions, rank the top 1-3 and explain the trade-offs."""
+- For "best fit" questions, search by meaning and rank the top 1-3 with the trade-offs. Do not filter by
+  seniority there: a role "for a senior" also fits lead and staff candidates."""
 
 
 @dataclass
@@ -63,6 +64,9 @@ def build_agent(model: Model | str | None = None) -> Agent[Deps, str]:
         hits = ctx.deps.store.search(query=query, limit=min(limit, 20), skills=skills, languages=languages,
                                      seniority=seniority, country=country, min_years=min_years)
         result = {"candidates": [asdict(h) for h in hits]}
+        if query:
+            result["note"] = ("Only candidates close to the best match are listed; a weak match is dropped "
+                              "rather than returned. Search again with other words to widen it.")
         if not hits and any(f is not None for f in (skills, languages, seniority, country, min_years)):
             # Say why it is empty: an empty list alone reads as "the dataset has nobody".
             result["note"] = ("No candidate matches these filters. Filters are exact; search again with the "

@@ -34,7 +34,7 @@ def test_ask_stops_on_an_empty_index(monkeypatch):
     monkeypatch.setattr(  # a random prefix: EphemeralClients share state within a process
         "cv_screener.store.CandidateStore",
         lambda embedder: real_store(FakeEmbedder(), client=chromadb.EphemeralClient(),
-                                    prefix=f"e{uuid.uuid4().hex[:8]}"))
+                                    prefix=f"e{uuid.uuid4().hex[:8]}", score_floor=0))
     result = runner.invoke(cli.app, ["ask", "Who speaks Spanish?"])
     assert result.exit_code == 2 and "index is empty" in result.stdout
 

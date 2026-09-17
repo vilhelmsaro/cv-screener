@@ -113,3 +113,17 @@ def test_coverage_passes_for_complete_cv(store):
 def test_field_search_returns_evidence_fields(store):
     hit = store.search(languages=["Spanish"])[0]
     assert "Spanish" in hit.languages and "Python" in hit.skills
+
+
+def test_weak_semantic_matches_are_dropped(store):
+    """The cutoff logic; the real thresholds are calibrated for the embedding model, not for the fake one."""
+    query = "automotive firmware CAN bus"
+    store.score_ratio = 0
+    everything = [h.name for h in store.search(query=query)]
+    assert len(everything) > 1 and everything[0] == "Johannes Becker"
+
+    store.score_ratio = 0.7  # keep only what is close to the best match
+    assert [h.name for h in store.search(query=query)] == ["Johannes Becker"]
+
+    store.score_floor = 1.0  # nothing can be that close: a nonsense query returns nobody
+    assert store.search(query=query) == []

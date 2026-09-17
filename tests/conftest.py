@@ -14,7 +14,9 @@ from .fakes import FakeEmbedder, make_fields
 
 @pytest.fixture
 def store():
-    s = CandidateStore(FakeEmbedder(), client=chromadb.EphemeralClient(), prefix=f"t{uuid.uuid4().hex[:8]}")
+    # score_floor=0: the fake embedder's similarity scale is not the real model's.
+    s = CandidateStore(FakeEmbedder(), client=chromadb.EphemeralClient(), prefix=f"t{uuid.uuid4().hex[:8]}",
+                       score_floor=0)
     s.upsert("c01", make_fields("Lucía Fernández Ortega", "Senior Data Scientist", "Spain", "senior", 8,
                             ["Python", "scikit-learn", "SQL"], ["Spanish", "English"]),
              "Lucía Fernández Ortega\n\nBuilt churn prediction models with scikit-learn and Airflow pipelines.")

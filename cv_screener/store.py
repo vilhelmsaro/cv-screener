@@ -198,8 +198,15 @@ class Hit:
 
 
 class CandidateStore:
-    def __init__(self, embedder: Embedder | None, client: chromadb.ClientAPI | None = None, prefix: str = "cv"):
+    # A chunk counts as a match only near the best one and never below the floor: cosine similarity ranks
+    # everything, so without this a query returns its least-bad chunks as if they were matches. Measured
+    # with text-embedding-3-small on this dataset: real matches 0.44-0.57, unrelated CVs <= 0.34, a
+    # nonsense query <= 0.22. The scale belongs to the embedding model, so tests with a fake embedder
+    # pass score_floor=0.
+    def __init__(self, embedder: Embedder | None, client: chromadb.ClientAPI | None = None, prefix: str = "cv",
+                 score_floor: float = 0.25, score_ratio: float = 0.7):
         self.embedder = embedder  # None is fine for reads that need no query vector (e.g. `cvs coverage`)
+        self.score_floor, self.score_ratio = score_floor, score_ratio
         self.client = client or make_client()
         # We pass embeddings ourselves, so no embedding function is needed.
         self.profiles = self.client.get_or_create_collection(f"{prefix}_profiles", embedding_function=None,
@@ -275,7 +282,11 @@ class CandidateStore:
             h.score = max(h.score or 0.0, round(1 - dist, 3))
             if len(h.snippets) < 2:  # results are sorted by distance: best evidence first
                 h.snippets.append(doc[:1200])
-        return sorted(hits.values(), key=lambda h: -(h.score or 0))[:limit]
+        ranked = sorted(hits.values(), key=lambda h: -(h.score or 0))
+        if not ranked:
+            return []
+        cutoff = max(self.score_floor, self.score_ratio * (ranked[0].score or 0))
+        return [h for h in ranked if (h.score or 0) >= cutoff][:limit]
 
     def all_profiles(self) -> list[dict]:
         return self.profiles.get(include=["metadatas"])["metadatas"]

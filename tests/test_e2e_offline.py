@@ -28,7 +28,8 @@ runner = CliRunner()
 @pytest.fixture(scope="module")
 def indexed_store():
     """Runs `cvs index` over the real PDFs with a fake embedder and an in-memory Chroma."""
-    store = CandidateStore(FakeEmbedder(), client=chromadb.EphemeralClient(), prefix=f"e{uuid.uuid4().hex[:8]}")
+    store = CandidateStore(FakeEmbedder(), client=chromadb.EphemeralClient(),
+                           prefix=f"e{uuid.uuid4().hex[:8]}", score_floor=0)
     with pytest.MonkeyPatch.context() as mp:
         mp.setattr(index, "OpenRouterEmbedder", FakeEmbedder)
         mp.setattr(index, "CandidateStore", lambda embedder: store)
