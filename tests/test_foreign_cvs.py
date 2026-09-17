@@ -94,7 +94,7 @@ def test_foreign_cv_with_dates_on_their_own_line(tmp_path):
     assert len(jobs) == 2 and "refunds service" in jobs[0].text and "fraud rules engine" in jobs[1].text
 
 
-def test_foreign_cv_with_dates_on_the_title_line_degrades_gracefully(tmp_path):
+def test_foreign_cv_with_dates_on_the_title_line(tmp_path):
     path = write_cv(tmp_path / "b.pdf", DATES_ON_THE_TITLE_LINE)
     text, fields, _ = read_cv(path, today=TODAY)
     assert (fields.full_name, fields.city, fields.country) == ("Ivan Horvat", "Zagreb", "Croatia")
@@ -102,9 +102,10 @@ def test_foreign_cv_with_dates_on_the_title_line_degrades_gracefully(tmp_path):
     assert (fields.seniority, fields.years_experience) == ("mid", 4)
     assert fields.skills == ["SQL", "Python", "Tableau"]
     assert fields.languages == ["Croatian", "English"]
-    # Known limit: without a date line the jobs are not separated, so the section stays one chunk.
     jobs = [c for c in chunk_cv(text, name="Ivan Horvat") if c.section == "experience"]
-    assert len(jobs) == 1 and "Infobip" in jobs[0].text and "Rimac" in jobs[0].text
+    assert len(jobs) == 2
+    assert "Infobip" in jobs[0].text and "dashboards" in jobs[0].text
+    assert "Rimac" in jobs[1].text and "weekly reports" in jobs[1].text
 
 
 def test_pdf_name_reads_the_foreign_header(foreign_cv):

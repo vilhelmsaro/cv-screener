@@ -184,8 +184,10 @@ identically to two skills, fixed by splitting skill items on commas outside brac
 - Skill matching via filters is exact after normalization ("PyTorch" vs "Pytorch" ok, "Java 17" and
   "Docker (basic)" also match "Java" / "Docker", "ML" vs "machine learning" not); the agent is instructed to
   fall back to semantic search.
-- Entries are separated by a date range on its own line. A CV that prints "Analyst, Acme (2020 - 2022)" on
-  one line still indexes and keeps its fields, but its jobs land in one chunk instead of one each.
+- Entry splitting handles both a date line of its own and a title line ending in its dates
+  ("Software Engineer | 10Web | Yerevan 2023 - 2025"). A real CV was used to find this: PDF layout blocks
+  there ended each paragraph with the next section's heading, and spoken languages were a "Languages: ..."
+  line instead of a section, both of which are now handled.
 - Field rules assume English headings and common CV conventions (a "Skills" section, "N years of experience"
   or dated jobs, "City, Country" next to the email). All 12 generated CVs parse fully without the LLM; other
   CVs may leave a field empty rather than get a wrong value.

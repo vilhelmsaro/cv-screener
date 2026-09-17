@@ -101,6 +101,10 @@ REQUIRED_SECTIONS = ("header", "experience", "education", "skills", "languages")
 MONTH = r"(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?"
 # Start of a date range: "Feb 2022 – Present", "2016 – 2019", "03/2019 - 06/2022", "01.2020 – 05.2022".
 _DATE_RANGE = re.compile(rf"^(?:{MONTH}\s+|\d{{1,2}}[./])?\d{{4}}\s*[–—-]", re.IGNORECASE)
+# The same range at the end of a title line: "Software Engineer | 10Web | Yerevan 2023 - 2025".
+_END = rf"(?:{MONTH}\s+|\d{{1,2}}[./])?\d{{4}}\s*[–—-]\s*(?:(?:{MONTH}\s+|\d{{1,2}}[./])?\d{{4}}|present|current|now)"
+_DATE_TAIL = re.compile(rf"{_END}\s*[).\]]?\s*$", re.IGNORECASE)
+_LABEL_LINE = re.compile(r"^([A-Za-z][\w &/-]{0,30}):\s*(\S.*)$")
 
 
 class Chunk(NamedTuple):
@@ -120,11 +124,83 @@ def _is_name_line(block: str, name: str) -> bool:
 
 
 def date_line_index(block: str) -> int | None:
-    """Index of the first short line in the block that starts a date range, if any."""
+    """Index of the first line in the block that carries an entry's dates, if any."""
     for i, line in enumerate(block.splitlines()[:4]):
-        if len(line) <= 40 and _DATE_RANGE.match(line.strip()):
+        if is_entry_header(line):
             return i
     return None
+
+
+def is_entry_header(line: str) -> bool:
+    """A date line of its own ("Feb 2022 - Present") or a title line ending in its dates.
+
+    Length limits keep a bullet that merely starts or ends with years from opening an entry.
+    """
+    line = line.strip()
+    return bool(len(line) <= 40 and _DATE_RANGE.match(line)) or bool(len(line) <= 120 and _DATE_TAIL.search(line))
+
+
+def _inline_section_label(line: str, current: str) -> tuple[str | None, str]:
+    """"Languages: Armenian (Native) | English" -> ("languages", "Armenian (Native) | English").
+
+    Real CVs often label a short section instead of giving it a heading. Inside a skills section the same
+    shape is a skill group ("Languages: Python, SQL"), so it is left alone there.
+    """
+    if m := _LABEL_LINE.match(line.strip()):
+        key = _section_of(m.group(1))
+        if key and key != current and not (current == "skills" and key == "languages"):
+            return key, m.group(2).strip()
+    return None, ""
+
+
+def _split_at_boundaries(blocks: list[str], name: str) -> list[str]:
+    """Cut blocks where a heading, a labelled section or an entry header sits inside them.
+
+    PDF layout blocks follow the page, not the document: a real CV often ends a paragraph block with the
+    next section's heading, or runs one job's bullets into the next job's title line.
+    """
+    out: list[str] = []
+    current = None  # the section we are in, carried across blocks
+    printed: dict[str, str] = {}  # section key -> heading as printed, to reopen it after a labelled line
+    for block in blocks:
+        buffer: list[str] = []
+        for line in block.splitlines():
+            key = _section_of(line)
+            label_key, rest = _inline_section_label(line, current or "")
+            if key:
+                if buffer:
+                    out.append("\n".join(buffer))
+                out.append(line.strip())
+                buffer, current = [], key
+                printed[key] = line.strip()
+            elif label_key:
+                if buffer:
+                    out.append("\n".join(buffer))
+                label = m.group(1).strip() if (m := _LABEL_LINE.match(line.strip())) else label_key
+                # A labelled section is exactly one line long, so reopen the section it interrupted.
+                out += [label, rest] + ([heading] if (heading := printed.get(current)) else [])
+                buffer = []
+            elif buffer and _is_title_with_dates(line):
+                out.append("\n".join(buffer))  # "Software Engineer | 10Web | Yerevan 2023 - 2025"
+                buffer = [line]
+            elif len(buffer) > 1 and is_entry_header(line) and _title_like(buffer[-1]):
+                out.append("\n".join(buffer[:-1]))  # the dates belong to the title line above them
+                buffer = [buffer[-1], line]
+            else:
+                buffer.append(line)
+        if buffer:
+            out.append("\n".join(buffer))
+    return out
+
+
+def _is_title_with_dates(line: str) -> bool:
+    """A title line that ends with its dates. A line that is only dates belongs to the title above it."""
+    line = line.strip()
+    return len(line) <= 120 and bool(_DATE_TAIL.search(line)) and not _DATE_RANGE.match(line)
+
+
+def _title_like(line: str) -> bool:
+    return bool(line.strip()) and len(line.strip()) <= 120 and not line.strip().endswith(".")
 
 
 def chunk_cv(text: str, name: str = "", max_chars: int = 2000) -> list[Chunk]:
@@ -137,6 +213,7 @@ def chunk_cv(text: str, name: str = "", max_chars: int = 2000) -> list[Chunk]:
     heading as printed, so a snippet shows where the evidence came from. No block is dropped.
     """
     blocks = [b.strip() for b in re.split(r"\n\s*\n", text) if b.strip()]
+    blocks = [b for b in _split_at_boundaries(blocks, name) if b.strip()]
     sections: list[tuple[str, str, list[str]]] = [(HEADER, "", [])]  # (key, printed heading, blocks)
     for block in blocks:
         if key := _section_of(block):

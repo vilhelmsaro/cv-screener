@@ -76,7 +76,7 @@ def parse_skills(lines: list[str]) -> list[str]:
 def parse_languages(lines: list[str]) -> list[str]:
     """Language names from "Spanish — Native" lines or "Polish (Native), English (B2)" lists."""
     names = []
-    for item in split_top_level(",".join(lines)):
+    for item in split_top_level(",".join(lines), separators=",;|·•"):  # real CVs also separate with "|"
         name = re.split(r"\s+[—–-](?:\s+|$)|\s*[(:]", item)[0].strip()
         if name and name[0].isalpha() and len(name) <= 30 and not _LANGUAGE_LEVEL.match(name):
             names.append(name)
@@ -166,7 +166,10 @@ def entry_title(chunk: Chunk) -> str:
     if idx:
         return " ".join(line.strip() for line in lines[:idx])
     first = lines[0] if lines else ""
-    return _RANGE.split(first)[0].strip(" ,;-–—([|") if _RANGE.search(first) else first.strip()
+    if _RANGE.search(first):
+        first = _RANGE.split(first)[0]
+    # "Software Engineer | 10Web | Yerevan" -> the role; a comma can be part of the role, a pipe cannot.
+    return re.split(r"\s*[|·•]\s*", first.strip(" ,;-–—([|"))[0].strip()
 
 
 def seniority_for(title: str, years: int) -> str:
