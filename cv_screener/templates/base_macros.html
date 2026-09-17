@@ -1,0 +1,14 @@
+{% macro skills(p) %}{% for g in p.skills %}<div class="sg"><b>{{ g.group }}:</b> {{ g.items|join(", ") }}</div>{% endfor %}{% endmacro %}
+{% macro langs(p) %}{% for l in p.languages %}<div>{{ l.name }} — {{ l.level }}</div>{% endfor %}{% endmacro %}
+{% macro jobs(p) %}{% for e in p.experience %}
+<div class="job"><div class="jh"><span class="t">{{ e.title }}</span><span class="d">{{ e.start }} – {{ e.end }}</span></div>
+<div class="co">{{ e.company }} · {{ e.location }}</div>
+<ul>{% for b in e.bullets %}<li>{{ b }}</li>{% endfor %}</ul></div>{% endfor %}{% endmacro %}
+{% macro edu(p) %}{% for e in p.education %}
+<div class="job"><div class="jh"><span class="t">{{ e.degree }}</span><span class="d">{{ e.start }} – {{ e.end }}</span></div>
+<div class="co">{{ e.institution }} · {{ e.location }}</div>{% if e.details %}<div class="det">{{ e.details }}</div>{% endif %}</div>{% endfor %}{% endmacro %}
+{% macro extras(p) %}
+{% if p.projects %}<h2>Projects</h2>{% for pr in p.projects %}<div class="job"><b>{{ pr.name }}</b> — {{ pr.description }}</div>{% endfor %}{% endif %}
+{% if p.certifications %}<h2>Certifications</h2><ul>{% for c in p.certifications %}<li>{{ c }}</li>{% endfor %}</ul>{% endif %}
+{% if p.interests %}<h2>Interests</h2><div>{{ p.interests|join(", ") }}</div>{% endif %}
+{% endmacro %}

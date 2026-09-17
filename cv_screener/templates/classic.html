@@ -1,0 +1,20 @@
+{% import "base_macros.html" as m %}<html><head><meta charset="utf-8"><style>
+@page { size: A4; margin: 16mm 18mm; }
+body { font-family: "DejaVu Serif", Georgia, serif; font-size: 9.6pt; color: #111; line-height: 1.35; }
+header { display: flex; justify-content: space-between; border-bottom: 1.5px solid #111; padding-bottom: 8px; }
+h1 { margin: 0; font-size: 21pt; letter-spacing: .5px; } .hl { font-size: 11pt; margin-top: 2px; }
+.contact { margin-top: 6px; font-size: 8.8pt; } img { width: 30mm; height: 36mm; object-fit: cover; }
+h2 { font-size: 10.5pt; text-transform: uppercase; letter-spacing: 1.5px; border-bottom: .5px solid #999; margin: 12px 0 5px; }
+.jh { display: flex; justify-content: space-between; } .t { font-weight: bold; } .d { font-style: italic; }
+.co { color: #444; } ul { margin: 3px 0 7px 16px; padding: 0; } .job { margin-bottom: 4px; page-break-inside: avoid; }
+</style></head><body>
+<header><div><h1>{{ p.full_name }}</h1><div class="hl">{{ p.headline }}</div>
+<div class="contact">{{ p.location }} · {{ p.email }} · {{ p.phone }}<br>{{ p.links|join(" · ") }}</div></div>
+<img src="{{ photo }}"></header>
+<h2>Profile</h2><div>{{ p.summary }}</div>
+<h2>Professional Experience</h2>{{ m.jobs(p) }}
+<h2>Education</h2>{{ m.edu(p) }}
+<h2>Skills</h2>{{ m.skills(p) }}
+<h2>Languages</h2>{{ m.langs(p) }}
+{{ m.extras(p) }}
+</body></html>

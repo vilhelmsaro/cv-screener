@@ -1,0 +1,18 @@
+{% import "base_macros.html" as m %}<html><head><meta charset="utf-8"><style>
+@page { size: Letter; margin: 12mm 14mm; }
+body { font-family: "DejaVu Sans", Helvetica, sans-serif; font-size: 8.8pt; color: #000; line-height: 1.3; }
+.top { display: flex; gap: 10px; align-items: center; } img { width: 22mm; height: 22mm; object-fit: cover; border-radius: 3px; }
+h1 { margin: 0; font-size: 17pt; } .hl { font-weight: bold; }
+h2 { font-size: 9.5pt; background: #eee; padding: 2px 4px; margin: 9px 0 4px; }
+.jh { display: flex; justify-content: space-between; } .t { font-weight: bold; } .co { font-style: italic; }
+ul { margin: 2px 0 5px 14px; padding: 0; } .job { margin-bottom: 3px; }
+</style></head><body>
+<div class="top"><img src="{{ photo }}"><div><h1>{{ p.full_name }}</h1><div class="hl">{{ p.headline }}</div>
+<div>{{ p.location }} | {{ p.email }} | {{ p.phone }} | {{ p.links|join(" | ") }}</div></div></div>
+<h2>SUMMARY</h2><div>{{ p.summary }}</div>
+<h2>TECHNICAL SKILLS</h2>{{ m.skills(p) }}
+<h2>EXPERIENCE</h2>{{ m.jobs(p) }}
+<h2>EDUCATION</h2>{{ m.edu(p) }}
+{{ m.extras(p) }}
+<h2>LANGUAGES</h2><div>{% for l in p.languages %}{{ l.name }} ({{ l.level }}){% if not loop.last %}, {% endif %}{% endfor %}</div>
+</body></html>
