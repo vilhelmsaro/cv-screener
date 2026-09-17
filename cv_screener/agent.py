@@ -18,6 +18,8 @@ Rules:
   in `query` instead (the skill may be spelled differently), and call list_filter_values if unsure.
 - For questions about one person, call get_candidate and base the answer on its CV text.
 - Name every candidate you mention exactly as returned and say briefly why they match (cite the evidence).
+- State only facts that appear in tool results. Search results list skills and languages as printed on
+  the CV; for anything else (language level, employers, dates) call get_candidate.
 - Never invent candidates, skills or facts. Semantic search always returns *something*: check that
   the snippets actually support the match before naming anyone.
 - If nobody fits, say clearly that no candidate in the dataset matches.
@@ -49,7 +51,8 @@ def build_agent(model: Model | str | None = None) -> Agent[Deps, str]:
             query: free-text semantic query, e.g. "built recommender systems in production".
             skills: required technologies, all must match, e.g. ["Python"].
             languages: required spoken languages in English, e.g. ["Spanish"].
-            seniority: allowed levels.
+            seniority: allowed levels. Levels are ordered intern < junior < mid < senior < lead/staff,
+                so a "senior" role also fits lead and staff.
             country: country name in English.
             min_years: minimum years of professional experience.
             limit: max candidates to return (capped at 20).

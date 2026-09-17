@@ -108,3 +108,8 @@ def test_coverage_passes_for_complete_cv(store):
     sent = {"c08": store.upsert("c08", make_fields("Johannes Becker", "Senior Embedded Engineer", "Germany",
                                                    "senior", 14, ["C++"], ["German"]), FULL_CV)}
     assert check_coverage(store, sent=sent) == []
+
+
+def test_field_search_returns_evidence_fields(store):
+    hit = store.search(languages=["Spanish"])[0]
+    assert "Spanish" in hit.languages and "Python" in hit.skills

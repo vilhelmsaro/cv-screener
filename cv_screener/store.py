@@ -191,6 +191,8 @@ class Hit:
     location: str
     seniority: str
     years_experience: int
+    skills: str = ""      # as printed on the CV, so the agent can cite a match without another call
+    languages: str = ""
     score: float | None = None
     snippets: list[str] = field(default_factory=list)
 
@@ -253,8 +255,8 @@ class CandidateStore:
     def _hit(meta: dict) -> Hit:
         return Hit(candidate_id=meta["candidate_id"], name=meta["name"], title=meta["title"],
                    location=", ".join(dict.fromkeys(p for p in (meta["city"], meta["country"]) if p)),
-                   seniority=meta["seniority"],
-                   years_experience=meta["years_experience"])
+                   seniority=meta["seniority"], years_experience=meta["years_experience"],
+                   skills=meta["skills"], languages=meta["languages"])
 
     def search(self, query: str | None = None, limit: int = 10, **filters) -> list[Hit]:
         where = self.build_where(**filters)
