@@ -38,3 +38,16 @@
 - id: unknown_person
   question: Summarize the profile of Maria Gonzalez
   expect_no_match: true
+- id: semantic_recommender
+  question: Who has built recommender systems in production?
+  expect_all: [Priya Raman]
+  expect_tool: search_candidates
+- id: filter_plus_semantic
+  question: Which Spanish speakers have Kubernetes experience?
+  expect_all: [Mateo Rojas Quintero]
+  forbid: [Lucía Fernández Ortega, Chen Wei]
+  expect_tool: search_candidates
+- id: partial_name
+  question: Summarize the profile of lucia fernandez
+  expect_all: [Lucía Fernández Ortega]
+  expect_tool: get_candidate

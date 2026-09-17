@@ -68,7 +68,8 @@ pytest
 
 ## Evals and tests
 
-- `evals/cases.yaml` has 8 cases (the four example questions, a field filter, and three no-match cases).
+- `evals/cases.yaml` has 11 cases: the four example questions, a field filter, semantic-only and
+  filter-plus-semantic search, a partial name, and three no-match cases.
   Each checks tool usage, expected/forbidden names, and **grounding**: every candidate named in the answer
   must appear in tool results. Results are written to `evals/last_run.txt`.
 - `tests/` runs offline with a hashing fake embedder, an in-memory Chroma, and PydanticAI's `TestModel`.
