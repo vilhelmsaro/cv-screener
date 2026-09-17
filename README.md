@@ -13,7 +13,7 @@ with photos, indexing, one eval run) cost about $1.20 with the models in `.env.e
 cached and cost nothing.
 
 ```bash
-git clone <repo-url> cv-screener && cd cv-screener
+git clone https://github.com/vilhelmsaro/cv-screener.git && cd cv-screener
 cp .env.example .env            # put your OPENROUTER_API_KEY in .env
 docker compose build
 
