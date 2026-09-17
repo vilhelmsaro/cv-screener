@@ -85,7 +85,7 @@ pytest
 ## Layout
 
 ```
-cv_screener/  config, models, seeds, llm, generate, store, fields, countries, index, agent, cli, templates/
+cv_screener/  config, models, seeds, llm, generate, store, fields, parsing, countries, index, agent, cli, templates/
 evals/        cases.yaml, run_evals.py
 tests/        offline unit tests
 data/         generated output (git-ignored)

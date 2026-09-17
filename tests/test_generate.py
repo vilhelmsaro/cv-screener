@@ -85,3 +85,5 @@ def test_a_skill_item_with_a_comma_becomes_two_skills():
     # The PDF renders items comma-separated, so "Git, Jenkins" as one item could never be read back as one.
     from cv_screener.models import SkillGroup
     assert SkillGroup(group="Tools", items=["Git, Jenkins", "Docker"]).items == ["Git", "Jenkins", "Docker"]
+    # Commas inside brackets are part of the skill.
+    assert SkillGroup(group="Cloud", items=["AWS (EC2, S3)"]).items == ["AWS (EC2, S3)"]
