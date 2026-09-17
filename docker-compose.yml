@@ -13,6 +13,7 @@ services:
       CHROMA_PORT: "8000"
     volumes:
       - ./data:/app/data
+      - ./evals:/app/evals   # keeps evals/last_run.txt on the host and applies cases.yaml edits
     depends_on:
       - chroma
     stdin_open: true
