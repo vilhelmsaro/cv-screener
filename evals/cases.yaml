@@ -1,0 +1,40 @@
+# expect_all: every name must be in the answer
+# forbid: none of these names may be in the answer
+# expect_no_match: answer must name nobody and say no one matches
+# expect_tool: this tool must have been called
+# Every case also checks grounding: each dataset name in the answer must have been returned by a tool.
+- id: python_experience
+  question: Who has experience with Python?
+  expect_all: [Priya Raman, Lucía Fernández Ortega, Olumide Adeyemi]
+  forbid: [Fatima Zahra El Amrani]
+  expect_tool: search_candidates
+- id: spanish_speakers
+  question: Which candidates speak Spanish?
+  expect_all: [Lucía Fernández Ortega, Mateo Rojas Quintero]
+  forbid: [Chen Wei, Johannes Becker, Priya Raman]
+  expect_tool: search_candidates
+- id: senior_ml_fit
+  question: Who would be the best fit for a senior ML role?
+  expect_all: [Priya Raman]
+  forbid: [Fatima Zahra El Amrani, Anna Petrosyan]
+  expect_tool: search_candidates
+- id: summarize_person
+  question: Summarize the profile of Johannes Becker
+  expect_all: [Johannes Becker]
+  expect_contains_any: ["C++", "embedded", "Embedded", "automotive", "AUTOSAR"]
+  expect_tool: get_candidate
+- id: country_filter
+  question: Which candidates are based in Germany?
+  expect_all: [Johannes Becker]
+  forbid: [Lucía Fernández Ortega, Tomasz Nowak]
+  expect_tool: search_candidates
+- id: no_match_japanese
+  question: Which candidates speak Japanese?
+  expect_no_match: true
+  expect_tool: search_candidates
+- id: no_match_pilot
+  question: Who has worked as a commercial airline pilot?
+  expect_no_match: true
+- id: unknown_person
+  question: Summarize the profile of Maria Gonzalez
+  expect_no_match: true
