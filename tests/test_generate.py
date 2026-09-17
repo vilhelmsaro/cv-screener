@@ -79,3 +79,9 @@ def test_wrong_cv_is_sent_back_and_fixed(monkeypatch):
     result = generate._profile(SEED)
     assert result.experience[0].title == "QA Automation Engineer"
     assert any("reads as senior" in str(m) for m in retry_messages)
+
+
+def test_a_skill_item_with_a_comma_becomes_two_skills():
+    # The PDF renders items comma-separated, so "Git, Jenkins" as one item could never be read back as one.
+    from cv_screener.models import SkillGroup
+    assert SkillGroup(group="Tools", items=["Git, Jenkins", "Docker"]).items == ["Git", "Jenkins", "Docker"]

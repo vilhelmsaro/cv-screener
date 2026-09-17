@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 Seniority = Literal["intern", "junior", "mid", "senior", "lead", "staff", "manager"]
 
@@ -53,6 +53,12 @@ class Language(BaseModel):
 class SkillGroup(BaseModel):
     group: str
     items: list[str]
+
+    @field_validator("items", mode="after")
+    @classmethod
+    def split_on_commas(cls, items: list[str]) -> list[str]:
+        """"Git, Jenkins" as one item is two skills on the page; keep the data the way a reader sees it."""
+        return [part.strip() for item in items for part in item.split(",") if part.strip()]
 
 
 class Project(BaseModel):
