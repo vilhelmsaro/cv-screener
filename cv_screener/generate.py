@@ -3,13 +3,14 @@ from __future__ import annotations
 
 import base64
 import json
+from datetime import date
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from rich.console import Console
 
-from .config import CVS_DIR, PHOTOS_DIR, PROFILES_DIR
-from .llm import generate_image, structured_agent, settings
+from .config import CVS_DIR, PHOTOS_DIR, PROFILES_DIR, settings
+from .llm import generate_image, structured_agent
 from .models import CandidateProfile
 from .seeds import SEEDS
 
@@ -33,7 +34,9 @@ Make it read like a real person's CV, not a template:
 def _profile(seed: dict) -> CandidateProfile:
     agent = structured_agent(settings.gen_model, CandidateProfile, GEN_INSTRUCTIONS)
     facts = "\n".join(f"{k}: {v}" for k, v in seed.items() if k not in {"id", "template", "photo"})
-    return agent.run_sync(f"Write the CV for this person.\n{facts}").output
+    # Without today's date the model cannot make "Present" roles and total years add up.
+    today = date.today().strftime("%B %Y")
+    return agent.run_sync(f"Today is {today}. Write the CV for this person.\n{facts}").output
 
 
 def _photo(seed: dict, path: Path) -> None:
@@ -48,7 +51,9 @@ def _photo(seed: dict, path: Path) -> None:
 def _render(seed: dict, profile: CandidateProfile, photo: Path, out: Path) -> None:
     from weasyprint import HTML  # imported lazily: needs system libs
 
-    photo_uri = "data:image/png;base64," + base64.b64encode(photo.read_bytes()).decode()
+    data = photo.read_bytes()
+    mime = "image/jpeg" if data.startswith(b"\xff\xd8\xff") else "image/png"  # image models return either
+    photo_uri = f"data:{mime};base64," + base64.b64encode(data).decode()
     html = TEMPLATES.get_template(f"{seed['template']}.html").render(p=profile, photo=photo_uri)
     HTML(string=html).write_pdf(out)
 
