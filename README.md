@@ -46,8 +46,13 @@ pytest
    `CandidateProfile` (validated with Pydantic), an image model generates the headshot, and one of three
    HTML templates (`classic`, `modern` with a sidebar, `compact` US Letter) is rendered to PDF. Profiles and photos are cached, so
    re-runs are free (`--force` regenerates).
-2. **Indexing** (`cv_screener/index.py`, `store.py`). Text is extracted from the **PDFs** (not from the
-   source JSON), an LLM extracts `ExtractedFields`, and two Chroma collections are written:
+2. **Indexing** (`cv_screener/index.py`, `fields.py`, `store.py`). Text is extracted from the **PDFs** (not
+   from the source JSON). Structured fields are read from the page with plain rules, so the same PDF always
+   gives the same fields: the name is the largest text on page 1, skills and languages come from their
+   sections, the current title from the first job, years of experience from the summary ("8 years of
+   experience") or else the job dates, the country from the contact line (checked against the ISO country
+   list), and seniority from title words or years. Only a country the rules cannot read goes to the LLM, and
+   its answer is kept only if it is a real country. Two Chroma collections are written:
    `profiles` (one record per candidate) and `chunks` (one per CV section, and one per job or degree,
    found from section headings and date ranges in the PDF text; each is embedded with the candidate's
    name and title). Every record carries the fields as metadata, including normalized
@@ -69,12 +74,13 @@ pytest
 - `tests/` runs offline with a hashing fake embedder, an in-memory Chroma, and PydanticAI's `TestModel`.
   `tests/test_chunking.py` pins the chunking rules and edge cases. `tests/test_generated_cvs.py` checks the
   real PDFs in `data/cvs` (skipped until `generate` has run): every job and degree is exactly one chunk with
-  all its bullets, using the generator's JSON only as the answer key.
+  all its bullets, and every extracted field matches the answer key (the generator's JSON and seeds, used
+  only for checking). `tests/test_fields.py` covers each extraction rule on small inputs.
 
 ## Layout
 
 ```
-cv_screener/  config, models, seeds, llm, generate, store, index, agent, cli, templates/
+cv_screener/  config, models, seeds, llm, generate, store, fields, countries, index, agent, cli, templates/
 evals/        cases.yaml, run_evals.py
 tests/        offline unit tests
 data/         generated output (git-ignored)

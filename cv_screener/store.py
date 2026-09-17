@@ -11,6 +11,7 @@ from typing import NamedTuple
 import chromadb
 
 from .config import CHROMA_DIR, settings
+from .countries import canonical_country
 from .llm import Embedder
 from .models import ExtractedFields
 
@@ -22,6 +23,17 @@ def norm(value: str) -> str:
     v = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode().lower().strip()
     v = _ALIASES.get(v, v)
     return re.sub(r"[^a-z0-9]+", "_", v).strip("_")
+
+
+def skill_key_variants(skill: str) -> set[str]:
+    """Filter keys for a skill as printed: "Java 17" also matches "Java", "Docker (basic)" matches "Docker",
+    "HTML/CSS" matches "HTML" and "CSS"."""
+    base = re.sub(r"\s*\(.*?\)", "", skill).strip()
+    base = re.sub(r"\s+v?\d+(\.\d+)*$", "", base)
+    keys = {norm(skill), norm(base)}
+    if "/" in base and " " not in base:
+        keys |= {norm(part) for part in base.split("/")}
+    return keys
 
 
 def fold(text: str) -> str:
@@ -59,7 +71,7 @@ def field_metadata(cid: str, f: ExtractedFields) -> dict:
         "summary": f.summary,
     }
     # Normalized list metadata for exact filtering with $contains. Chroma rejects empty lists.
-    if skill_keys := sorted({norm(s) for s in f.skills} - {""}):
+    if skill_keys := sorted({k for s in f.skills for k in skill_key_variants(s)} - {""}):
         meta["skill_keys"] = skill_keys
     if lang_keys := sorted({norm(lang) for lang in f.languages} - {""}):
         meta["lang_keys"] = lang_keys
@@ -86,9 +98,9 @@ _HEADING_TO_SECTION = {heading: key for key, headings in SECTIONS.items() for he
 HEADER = "header"  # name, headline, contact line and any text before the first heading
 REQUIRED_SECTIONS = ("header", "experience", "education", "skills", "languages")
 
-_MONTH = r"(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?"
+MONTH = r"(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?"
 # Start of a date range: "Feb 2022 – Present", "2016 – 2019", "03/2019 - 06/2022", "01.2020 – 05.2022".
-_DATE_RANGE = re.compile(rf"^(?:{_MONTH}\s+|\d{{1,2}}[./])?\d{{4}}\s*[–—-]", re.IGNORECASE)
+_DATE_RANGE = re.compile(rf"^(?:{MONTH}\s+|\d{{1,2}}[./])?\d{{4}}\s*[–—-]", re.IGNORECASE)
 
 
 class Chunk(NamedTuple):
@@ -107,7 +119,7 @@ def _is_name_line(block: str, name: str) -> bool:
     return bool(name_words) and set(name_words) <= set(line_words) and len(line_words) <= len(name_words) + 2
 
 
-def _date_line_index(block: str) -> int | None:
+def date_line_index(block: str) -> int | None:
     """Index of the first short line in the block that starts a date range, if any."""
     for i, line in enumerate(block.splitlines()[:4]):
         if len(line) <= 40 and _DATE_RANGE.match(line.strip()):
@@ -138,8 +150,8 @@ def chunk_cv(text: str, name: str = "", max_chars: int = 2000) -> list[Chunk]:
     for key, heading, body in sections:
         entries: list[list[str]] = []
         for block in body:
-            idx = _date_line_index(block)
-            if idx == 0 and entries and len(entries[-1]) == 1 and _date_line_index(entries[-1][0]) is None \
+            idx = date_line_index(block)
+            if idx == 0 and entries and len(entries[-1]) == 1 and date_line_index(entries[-1][0]) is None \
                     and len(entries[-1][0]) <= 120:
                 entries[-1].append(block)  # dates in their own block right after a wrapped title
             elif idx is not None or not entries:
@@ -230,7 +242,7 @@ class CandidateStore:
         if seniority:
             conds.append({"seniority": {"$in": list(seniority)}})
         if country:
-            conds.append({"country_key": norm(country)})
+            conds.append({"country_key": norm(canonical_country(country) or country)})
         if min_years is not None:
             conds.append({"years_experience": {"$gte": int(min_years)}})
         if not conds:
@@ -240,7 +252,8 @@ class CandidateStore:
     @staticmethod
     def _hit(meta: dict) -> Hit:
         return Hit(candidate_id=meta["candidate_id"], name=meta["name"], title=meta["title"],
-                   location=f"{meta['city']}, {meta['country']}", seniority=meta["seniority"],
+                   location=", ".join(dict.fromkeys(p for p in (meta["city"], meta["country"]) if p)),
+                   seniority=meta["seniority"],
                    years_experience=meta["years_experience"])
 
     def search(self, query: str | None = None, limit: int = 10, **filters) -> list[Hit]:

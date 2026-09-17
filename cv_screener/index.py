@@ -1,22 +1,25 @@
-"""Step 2: parse PDFs, extract structured fields with an LLM, index into Chroma."""
+"""Step 2: read the PDFs, take structured fields from the page with rules, index into Chroma."""
 from __future__ import annotations
 
 from collections import Counter
+from datetime import date
+from pathlib import Path
 
 import pymupdf
 from rich.console import Console
 from rich.table import Table
 
 from .config import CVS_DIR, settings
+from .countries import canonical_country
+from .fields import extract_fields, find_location
 from .llm import OpenRouterEmbedder, structured_agent
 from .models import ExtractedFields
-from .store import REQUIRED_SECTIONS, CandidateStore, missing_sections
+from .store import REQUIRED_SECTIONS, CandidateStore, chunk_cv, missing_sections
 
 console = Console()
 
-EXTRACT_INSTRUCTIONS = """Extract structured fields from the CV text. Use only what the CV states.
-Seniority: intern/junior/mid/senior/lead/staff/manager based on title and years.
-Spoken languages only (not programming languages), English names. Country in English."""
+COUNTRY_INSTRUCTIONS = """You get the contact lines of a CV. Reply with only the country the person is based in,
+as its English name. If the text does not say, reply with an empty string."""
 
 
 def pdf_text(path) -> str:
@@ -29,24 +32,52 @@ def pdf_text(path) -> str:
     return "\n\n".join(b for b in blocks if any(ch.isalnum() for ch in b))  # drops lone bullet glyphs
 
 
+def pdf_name(path) -> str:
+    """The candidate's name: the largest text on the first page."""
+    with pymupdf.open(path) as doc:
+        spans = [span for block in doc[0].get_text("dict")["blocks"] if block["type"] == 0
+                 for line in block["lines"] for span in line["spans"] if span["text"].strip()]
+    if not spans:
+        return ""
+    top = max(span["size"] for span in spans)
+    return " ".join(span["text"].strip() for span in spans if span["size"] >= top - 0.5)
+
+
+def read_cv(path: Path, today: date | None = None) -> tuple[str, ExtractedFields, list[str]]:
+    """PDF -> (text, fields from rules, fields the rules could not resolve). Offline and deterministic."""
+    text, name = pdf_text(path), pdf_name(path)
+    fields, unresolved = extract_fields(chunk_cv(text, name=name), name, today or date.today())
+    return text, fields, unresolved
+
+
+def _country_from_llm(text: str, name: str) -> str:
+    """Last resort for a location the rules cannot read. The answer must be a real country or it is dropped."""
+    chunks = chunk_cv(text, name=name)
+    contact = find_location(chunks) or "\n".join(c.text for c in chunks if c.section in ("header", "contact"))
+    agent = structured_agent(settings.extract_model, str, COUNTRY_INSTRUCTIONS, max_tokens=50)
+    return canonical_country(agent.run_sync(contact[:1500]).output) or ""
+
+
 def run() -> None:
     pdfs = sorted(CVS_DIR.glob("*.pdf"))
     if not pdfs:
         raise SystemExit("No PDFs in data/cvs. Run `cvs generate` first.")
     store = CandidateStore(OpenRouterEmbedder())
-    extractor = structured_agent(settings.extract_model, ExtractedFields, EXTRACT_INSTRUCTIONS)
     failed, sent = [], {}
     for pdf in pdfs:
         try:
-            text = pdf_text(pdf)
-            fields = extractor.run_sync(text).output
+            text, fields, unresolved = read_cv(pdf)
+            if "country" in unresolved:
+                fields.country = _country_from_llm(text, fields.full_name)
+                console.print(f"  {pdf.stem}: country not readable by rules, LLM says {fields.country or 'nothing'!r}")
             sent[pdf.stem] = store.upsert(pdf.stem, fields, text)
         except Exception as e:  # keep indexing the others; upsert is idempotent, so a rerun is safe
             failed.append(pdf.stem)
             console.print(f"[red]failed {pdf.stem}:[/] {e!r}")
             continue
-        console.print(f"indexed {pdf.stem}: {fields.full_name} | {fields.seniority} | "
-                      f"{', '.join(fields.languages)} | {len(fields.skills)} skills")
+        console.print(f"indexed {pdf.stem}: {fields.full_name} | {fields.current_title} | {fields.country} | "
+                      f"{fields.seniority}, {fields.years_experience}y | {', '.join(fields.languages)} | "
+                      f"{len(fields.skills)} skills")
     console.print(f"[green]Done:[/] {store.profiles.count()} candidates, {store.chunks.count()} chunks")
     problems = check_coverage(store, sent)
     if failed or problems:
