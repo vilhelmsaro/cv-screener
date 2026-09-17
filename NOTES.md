@@ -1,14 +1,93 @@
 # NOTES
 
 ## Eval results
-_Paste the output of `cvs eval` (also saved to `evals/last_run.txt`) here, unedited._
+
+`cvs eval`, first complete run, 2026-09-17, unedited (also in `evals/last_run.txt`).
+Models: agent `openai/gpt-4.1-mini`, embeddings `openai/text-embedding-3-small`.
 
 ```
-TODO: run evals and paste results
+[PASS] python_experience: Who has experience with Python?
+    ok  used a tool
+    ok  called search_candidates
+    ok  grounded (names came from tools)
+    ok  names Priya Raman
+    ok  names Lucía Fernández Ortega
+    ok  names Olumide Adeyemi
+    ok  does not name Fatima Zahra El Amrani
+[PASS] spanish_speakers: Which candidates speak Spanish?
+    ok  used a tool
+    ok  called search_candidates
+    ok  grounded (names came from tools)
+    ok  names Lucía Fernández Ortega
+    ok  names Mateo Rojas Quintero
+    ok  does not name Chen Wei
+    ok  does not name Johannes Becker
+    ok  does not name Priya Raman
+[FAIL] senior_ml_fit: Who would be the best fit for a senior ML role?
+    ok  used a tool
+    ok  called search_candidates
+    ok  grounded (names came from tools)
+    XX  names Priya Raman
+    ok  does not name Fatima Zahra El Amrani
+    ok  does not name Anna Petrosyan
+    answer: No candidates matching the seniority level with Machine Learning skill and English language were found in the dataset. Thus, there is no best fit for a senior ML role available in the current candidate set.
+[PASS] summarize_person: Summarize the profile of Johannes Becker
+    ok  used a tool
+    ok  called get_candidate
+    ok  grounded (names came from tools)
+    ok  names Johannes Becker
+    ok  mentions key facts
+[PASS] country_filter: Which candidates are based in Germany?
+    ok  used a tool
+    ok  called search_candidates
+    ok  grounded (names came from tools)
+    ok  names Johannes Becker
+    ok  does not name Lucía Fernández Ortega
+    ok  does not name Tomasz Nowak
+[PASS] no_match_japanese: Which candidates speak Japanese?
+    ok  used a tool
+    ok  called search_candidates
+    ok  grounded (names came from tools)
+    ok  names nobody
+    ok  says no match
+[PASS] no_match_pilot: Who has worked as a commercial airline pilot?
+    ok  used a tool
+    ok  grounded (names came from tools)
+    ok  names nobody
+    ok  says no match
+[PASS] unknown_person: Summarize the profile of Maria Gonzalez
+    ok  used a tool
+    ok  grounded (names came from tools)
+    ok  names nobody
+    ok  says no match
+[PASS] semantic_recommender: Who has built recommender systems in production?
+    ok  used a tool
+    ok  called search_candidates
+    ok  grounded (names came from tools)
+    ok  names Priya Raman
+[PASS] filter_plus_semantic: Which Spanish speakers have Kubernetes experience?
+    ok  used a tool
+    ok  called search_candidates
+    ok  grounded (names came from tools)
+    ok  names Mateo Rojas Quintero
+    ok  does not name Lucía Fernández Ortega
+    ok  does not name Chen Wei
+[PASS] partial_name: Summarize the profile of lucia fernandez
+    ok  used a tool
+    ok  called get_candidate
+    ok  grounded (names came from tools)
+    ok  names Lucía Fernández Ortega
+
+TOTAL: 10/11 cases passed
 ```
 
 ## Not done / known issues
-- TODO: fill in after the run.
+- **Eval `senior_ml_fit` fails in the run above.** Asked for the best fit for a senior ML role, the agent
+  filtered on the exact skill "Machine Learning" (no CV lists that literal string) plus a language filter
+  the question never asked for, got nothing, and answered that nobody matches. The grounding check still
+  passed: it invented no one. Fix attempt and a second run are below.
+- `get_candidate` returns the first candidate whose name words match; with two similar names it would
+  silently pick one. No two candidates share name words in this dataset.
 - Photo generation depends on the chosen OpenRouter image model. A failed candidate is skipped and listed at the end;
   rerun with `cvs generate --only <id>`.
 - Skill matching via filters is exact after normalization ("PyTorch" vs "Pytorch" ok, "Java 17" and
