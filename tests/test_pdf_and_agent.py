@@ -4,7 +4,7 @@ from pydantic_ai.models.test import TestModel
 
 from cv_screener.agent import Deps, build_agent
 from cv_screener.index import pdf_text
-from evals.run_evals import check_case
+from evals.run_evals import check_case, mentioned
 
 NAMES = ["Lucía Fernández Ortega", "Johannes Becker", "Anna Petrosyan"]
 
@@ -45,3 +45,9 @@ def test_eval_checker_no_match():
     case = {"expect_no_match": True}
     answer = "No candidate in the dataset speaks Japanese."
     assert all(c[1] for c in check_case(case, answer, _messages("[]", answer), NAMES))
+
+
+def test_mentioned_matches_whole_words_only():
+    names = ["Chen Wei", "Daniel Kim", "Lucía Fernández Ortega"]
+    assert mentioned("The kitchen team skimmed weights.", names) == set()
+    assert mentioned("Lucia Ortega and Daniel Kim fit.", names) == {"Lucía Fernández Ortega", "Daniel Kim"}

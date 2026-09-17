@@ -5,6 +5,7 @@ Requires a populated index and OPENROUTER_API_KEY. Output is also saved to evals
 """
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -20,8 +21,12 @@ NO_MATCH_HINTS = ["no candidate", "no one", "nobody", "none of the candidates", 
 
 def mentioned(text: str, names: list[str]) -> set[str]:
     t = fold(text)
-    # A name counts as mentioned if its first and last token both appear.
-    return {n for n in names if fold(n.split()[0]) in t and fold(n.split()[-1]) in t}
+
+    def has_word(word: str) -> bool:
+        return re.search(rf"\b{re.escape(fold(word))}\b", t) is not None
+
+    # A name counts as mentioned if its first and last token both appear as whole words.
+    return {n for n in names if has_word(n.split()[0]) and has_word(n.split()[-1])}
 
 
 def check_case(case: dict, answer: str, messages, all_names: list[str]) -> list[tuple[str, bool, str]]:
