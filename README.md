@@ -17,9 +17,13 @@ cp .env.example .env            # put your OPENROUTER_API_KEY in .env
 docker compose build
 
 docker compose run --rm app generate   # 12 candidates -> data/cvs/*.pdf
+cp examples/*.pdf data/cvs/            # optional: also index the author's real CV
 docker compose run --rm app index      # PDFs -> fields + embeddings -> Chroma
 docker compose run --rm app chat       # ask questions
 ```
+
+`examples/` holds one real CV. Indexing it alongside the generated ones shows the pipeline on a layout it
+did not produce, and lets you ask about the author: *"Who has built Telegram bots?"*
 
 | Command | What it does | Needs a key |
 |---|---|---|
@@ -83,20 +87,22 @@ plainly when nobody matches.
   filter-plus-semantic search, a partial name, and three no-match cases. Each checks tool usage, expected
   and forbidden names, and **grounding**: every candidate named in the answer must appear in tool results.
   Output goes to `evals/last_run.txt`; the recorded runs are in `NOTES.md` (latest: 11/11).
-- **`tests/`, 153 tests, offline and no API key**, using a hashing fake embedder, an in-memory Chroma and
+- **`tests/`, 156 tests, offline and no API key**, using a hashing fake embedder, an in-memory Chroma and
   PydanticAI's `FunctionModel`. They cover the chunking rules and edge cases (`test_chunking.py`), each
   field rule (`test_fields.py`), CV layouts our templates never produce (`test_foreign_cvs.py`), a run
-  through index → tools → CLI → eval checks (`test_e2e_offline.py`), and that the model never receives CV
-  data (`test_agent_and_evals.py`). `test_generated_cvs.py` checks the real PDFs in `data/cvs` once
-  `generate` has run: every job and degree is one chunk with all its bullets, and every extracted field
-  matches the answer key. `test_boundaries.py` keeps the seeds and generated JSON off the read path, which
-  a real deployment would not have.
+  through index → tools → CLI → eval checks (`test_e2e_offline.py`), that the model never receives CV
+  data (`test_agent_and_evals.py`), and that the real CV in `examples/` still parses
+  (`test_example_cv.py`). `test_generated_cvs.py` checks the PDFs in `data/cvs` once `generate` has run:
+  every job and degree is one chunk with all its bullets, and every field matches the answer key.
+  `test_boundaries.py` keeps the seeds and generated JSON off the read path, which a real deployment
+  would not have.
 
 ## Layout
 
 ```
 cv_screener/  config, models, seeds, llm, generate, store, fields, parsing, countries, index, agent, cli, templates/
 evals/        cases.yaml, run_evals.py
+examples/     one real CV, used as a parsing fixture
 tests/        offline tests
 data/         generated output (git-ignored)
 ```

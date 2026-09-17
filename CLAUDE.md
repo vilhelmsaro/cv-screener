@@ -16,5 +16,6 @@ Project: CV Screener test task. Python only. See README.md for architecture.
 - Indexing reads the PDFs. `seeds.py` and `data/profiles` are generator input and test answer keys only; the
   index/search/agent path must never import them (`tests/test_boundaries.py` enforces this).
 - Keep `chromadb` pin in pyproject.toml equal to the image tag in docker-compose.yml.
-- Never commit `.env` or anything under `data/` except `.gitkeep`.
+- Never commit `.env` or anything under `data/` except `.gitkeep`. Real CVs live in `examples/`, which is
+  committed and used as a parsing fixture by `tests/test_example_cv.py`.
 - Commit messages in English, imperative mood, one logical change per commit.
