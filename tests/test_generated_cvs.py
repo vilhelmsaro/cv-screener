@@ -17,7 +17,7 @@ from cv_screener.countries import canonical_country
 from cv_screener.generate import seed_mismatches
 from cv_screener.index import pdf_text, read_cv
 from cv_screener.models import CandidateProfile
-from cv_screener.seeds import SEEDS
+from cv_screener.seeds import SEEDS_BY_ID
 from cv_screener.store import chunk_cv, fold, missing_sections
 
 PAIRS = [(pdf, PROFILES_DIR / f"{pdf.stem}.json") for pdf in sorted(CVS_DIR.glob("*.pdf"))]
@@ -60,7 +60,7 @@ def test_every_section_and_entry_is_chunked(pdf: Path, profile_json: Path):
 @pytest.mark.parametrize("pdf, profile_json", PAIRS, ids=[p.stem for p, _ in PAIRS])
 def test_fields_match_answer_key(pdf: Path, profile_json: Path):
     profile = CandidateProfile.model_validate(json.loads(profile_json.read_text(encoding="utf-8")))
-    seed = next(s for s in SEEDS if s["id"] == pdf.stem)
+    seed = SEEDS_BY_ID[pdf.stem]
     _, fields, unresolved = read_cv(pdf, today=date(2026, 9, 17))
     location = [p.strip() for p in re.sub(r"\(.*?\)", "", profile.location).split(",")]
 
@@ -68,8 +68,8 @@ def test_fields_match_answer_key(pdf: Path, profile_json: Path):
     assert fields.full_name == profile.full_name
     assert fields.current_title == profile.experience[0].title
     assert (fields.city, fields.country) == (location[0], canonical_country(location[-1]))
-    assert fields.years_experience == seed["years"]
-    assert fields.seniority == seed["level"]
+    assert fields.years_experience == seed.years
+    assert fields.seniority == seed.level
     assert fields.languages == [lang.name for lang in profile.languages]
     assert fields.skills == [item for group in profile.skills for item in group.items]
     assert fields.highest_education in [e.degree for e in profile.education]
@@ -81,4 +81,4 @@ def test_generated_profile_matches_seed(pdf: Path, profile_json: Path):
     # Fails for CVs generated before the seed check existed; regenerate with `cvs generate --only <id>`
     # after deleting data/profiles/<id>.json.
     profile = CandidateProfile.model_validate(json.loads(profile_json.read_text(encoding="utf-8")))
-    assert seed_mismatches(next(s for s in SEEDS if s["id"] == pdf.stem), profile) == []
+    assert seed_mismatches(SEEDS_BY_ID[pdf.stem], profile) == []

@@ -3,9 +3,28 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 Seniority = Literal["intern", "junior", "mid", "senior", "lead", "staff", "manager"]
+
+
+class Seed(BaseModel):
+    """Fixed facts for one synthetic candidate (seeds.py). The generator must not contradict them."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    id: str = Field(pattern=r"^c\d{2}$")
+    name: str
+    role: str
+    level: Seniority
+    years: int = Field(ge=0, le=50)
+    location: str
+    languages: str = Field(description="e.g. 'Spanish (native), English (C1)'")
+    stack: str
+    education: str
+    style: str = Field(description="how the CV should read, e.g. 'German Lebenslauf style, formal'")
+    template: Literal["classic", "modern", "compact"]
+    photo: str = Field(description="who is in the headshot and the setting")
 
 
 class Experience(BaseModel):

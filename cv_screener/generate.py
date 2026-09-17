@@ -13,7 +13,7 @@ from rich.console import Console
 from .config import CVS_DIR, PHOTOS_DIR, PROFILES_DIR, settings
 from .fields import parse_languages, seniority_for, years_from_text
 from .llm import generate_image, structured_agent
-from .models import CandidateProfile
+from .models import CandidateProfile, Seed
 from .seeds import SEEDS
 
 console = Console()
@@ -35,21 +35,21 @@ Make it read like a real person's CV, not a template:
 - do NOT add spoken languages or core technologies beyond those given (minor tools are fine)."""
 
 
-def seed_mismatches(seed: dict, profile: CandidateProfile) -> list[str]:
+def seed_mismatches(seed: Seed, profile: CandidateProfile) -> list[str]:
     """Seed facts the CV gets wrong, judged by the same rules indexing uses to read them back from the PDF."""
     problems = []
     title = profile.experience[0].title if profile.experience else ""
-    if (level := seniority_for(title, seed["years"])) != seed["level"]:
-        problems.append(f"the current job title {title!r} reads as {level}, but the person is {seed['level']}")
-    if (years := years_from_text(profile.summary)) != seed["years"]:
-        problems.append(f"the summary must say \"{seed['years']} years of experience\" (found: {years})")
-    expected = {lang.casefold() for lang in parse_languages([seed["languages"]])}
+    if (level := seniority_for(title, seed.years)) != seed.level:
+        problems.append(f"the current job title {title!r} reads as {level}, but the person is {seed.level}")
+    if (years := years_from_text(profile.summary)) != seed.years:
+        problems.append(f"the summary must say \"{seed.years} years of experience\" (found: {years})")
+    expected = {lang.casefold() for lang in parse_languages([seed.languages])}
     if (actual := {lang.name.casefold() for lang in profile.languages}) != expected:
         problems.append(f"spoken languages must be exactly {sorted(expected)} (found: {sorted(actual)})")
     return problems
 
 
-def _profile(seed: dict) -> CandidateProfile:
+def _profile(seed: Seed) -> CandidateProfile:
     agent = structured_agent(settings.gen_model, CandidateProfile, GEN_INSTRUCTIONS, max_tokens=8000)
 
     @agent.output_validator
@@ -59,32 +59,32 @@ def _profile(seed: dict) -> CandidateProfile:
             raise ModelRetry("Fix these facts and return the whole CV again: " + "; ".join(problems))
         return profile
 
-    facts = "\n".join(f"{k}: {v}" for k, v in seed.items() if k not in {"id", "template", "photo"})
+    facts = "\n".join(f"{k}: {v}" for k, v in seed.model_dump(exclude={"id", "template", "photo"}).items())
     # Without today's date the model cannot make "Present" roles and total years add up.
     today = date.today().strftime("%B %Y")
     return agent.run_sync(f"Today is {today}. Write the CV for this person.\n{facts}").output
 
 
-def _photo(seed: dict, path: Path) -> None:
+def _photo(seed: Seed, path: Path) -> None:
     prompt = (
-        f"Headshot photo for a CV: {seed['photo']}, working as {seed['role']}. "
+        f"Headshot photo for a CV: {seed.photo}, working as {seed.role}. "
         "Head and shoulders, realistic photograph, not illustrated, no text, square framing."
     )
     path.write_bytes(generate_image(prompt))
 
 
-def _render(seed: dict, profile: CandidateProfile, photo: Path, out: Path) -> None:
+def _render(seed: Seed, profile: CandidateProfile, photo: Path, out: Path) -> None:
     from weasyprint import HTML  # imported lazily: needs system libs
 
     data = photo.read_bytes()
     mime = "image/jpeg" if data.startswith(b"\xff\xd8\xff") else "image/png"  # image models return either
     photo_uri = f"data:{mime};base64," + base64.b64encode(data).decode()
-    html = TEMPLATES.get_template(f"{seed['template']}.html").render(p=profile, photo=photo_uri)
+    html = TEMPLATES.get_template(f"{seed.template}.html").render(p=profile, photo=photo_uri)
     HTML(string=html).write_pdf(out)
 
 
-def _build(seed: dict, force: bool) -> Path:
-    pid = seed["id"]
+def _build(seed: Seed, force: bool) -> Path:
+    pid = seed.id
     prof_path, photo_path, pdf_path = PROFILES_DIR / f"{pid}.json", PHOTOS_DIR / f"{pid}.png", CVS_DIR / f"{pid}.pdf"
     if force or not prof_path.exists():  # cache: reruns cost nothing
         prof_path.write_text(_profile(seed).model_dump_json(indent=2), encoding="utf-8")
@@ -102,13 +102,13 @@ def run(force: bool = False, only: list[str] | None = None) -> None:
         d.mkdir(parents=True, exist_ok=True)
     failed = []
     for seed in SEEDS:
-        if only and seed["id"] not in only:
+        if only and seed.id not in only:
             continue
-        console.print(f"[bold]{seed['id']}[/] {seed['name']} - {seed['role']}")
+        console.print(f"[bold]{seed.id}[/] {seed.name} - {seed.role}")
         try:  # one failed candidate should not lose the rest; cached steps make a rerun cheap
             pdf_path = _build(seed, force)
         except Exception as e:
-            failed.append(seed["id"])
+            failed.append(seed.id)
             console.print(f"  [red]failed:[/] {e!r}")
             continue
         console.print(f"  -> {pdf_path.relative_to(CVS_DIR.parent.parent)}")
