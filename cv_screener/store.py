@@ -55,7 +55,8 @@ def field_metadata(cid: str, f: ExtractedFields) -> dict:
     return meta
 
 
-def chunk_text(text: str, size: int = 900) -> list[str]:
+def chunk_text(text: str, size: int = 800) -> list[str]:
+    """Group blank-line separated blocks (see index.pdf_text) into chunks of about `size` chars."""
     paras = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
     chunks, cur = [], ""
     for p in paras:
@@ -95,7 +96,9 @@ class CandidateStore:
         meta = field_metadata(cid, fields)
         profile_doc = f"{fields.full_name}. {fields.current_title}. {fields.summary} Skills: {meta['skills']}"
         chunks = chunk_text(full_text)
-        vectors = self.embedder.embed([profile_doc, *chunks])
+        # Prefix each chunk with who it belongs to so a lone bullet list still embeds in context.
+        header = f"{fields.full_name}, {fields.current_title}\n"
+        vectors = self.embedder.embed([profile_doc, *(header + c for c in chunks)])
         # Delete first: Chroma's upsert merges metadata keys, so a re-index could keep stale fields.
         self.profiles.delete(ids=[cid])
         self.profiles.add(ids=[cid], documents=[full_text], embeddings=[vectors[0]], metadatas=[meta])
@@ -141,8 +144,8 @@ class CandidateStore:
         for meta, doc, dist in zip(res["metadatas"][0], res["documents"][0], res["distances"][0]):
             h = hits.setdefault(meta["candidate_id"], self._hit(meta))
             h.score = max(h.score or 0.0, round(1 - dist, 3))
-            if len(h.snippets) < 2:
-                h.snippets.append(doc[:300])
+            if len(h.snippets) < 2:  # results are sorted by distance: best evidence first
+                h.snippets.append(doc[:500])
         return sorted(hits.values(), key=lambda h: -(h.score or 0))[:limit]
 
     def all_profiles(self) -> list[dict]:

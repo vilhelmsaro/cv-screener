@@ -1,3 +1,6 @@
+import pymupdf
+
+from cv_screener.index import pdf_text
 from cv_screener.store import CandidateStore, chunk_text, norm
 
 from .conftest import _fields
@@ -37,6 +40,20 @@ def test_get_candidate_is_accent_and_partial_insensitive(store):
     assert store.get("Becker")["fields"]["name"] == "Johannes Becker"
     assert store.get("Maria Gonzalez") is None
     assert store.get("an") is None and store.get("") is None
+
+
+def test_pdf_blocks_become_separate_chunks(tmp_path):
+    path = tmp_path / "cv.pdf"
+    doc = pymupdf.open()
+    page = doc.new_page()
+    for i, y in enumerate(range(80, 700, 60)):
+        page.insert_textbox(pymupdf.Rect(72, y, 520, y + 50), f"Job {i}: " + "shipped features " * 12)
+    page.insert_text((72, 760), "•")
+    doc.save(path)
+    text = pdf_text(path)
+    assert "•" not in text
+    chunks = chunk_text(text)
+    assert len(chunks) > 1 and all(len(c) < 1200 for c in chunks)
 
 
 def test_helpers():

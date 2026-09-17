@@ -17,8 +17,13 @@ Spoken languages only (not programming languages), English names. Country in Eng
 
 
 def pdf_text(path) -> str:
+    """PDF text with one blank line between layout blocks, so chunking can split on them.
+
+    Plain get_text("text") has no blank lines, which would make each page a single chunk.
+    """
     with pymupdf.open(path) as doc:
-        return "\n\n".join(page.get_text("text") for page in doc).strip()
+        blocks = [b[4].strip() for page in doc for b in page.get_text("blocks") if b[6] == 0]
+    return "\n\n".join(b for b in blocks if any(ch.isalnum() for ch in b))  # drops lone bullet glyphs
 
 
 def run() -> None:
