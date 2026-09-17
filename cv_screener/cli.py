@@ -20,8 +20,9 @@ def _print_trace(messages) -> None:
                 line = f"-> {part.tool_name}({args})"
             elif isinstance(part, ToolReturnPart):
                 content = part.content
-                if isinstance(content, list):
-                    line = f"<- {len(content)} candidate(s): " + ", ".join(h["name"] for h in content)
+                if isinstance(content, dict) and "candidates" in content:
+                    names = ", ".join(h["name"] for h in content["candidates"])
+                    line = f"<- {len(content['candidates'])} candidate(s)" + (f": {names}" if names else "")
                 elif isinstance(content, dict) and "error" in content:
                     line = f"<- {content['error']}"
                 elif isinstance(content, dict) and "fields" in content:

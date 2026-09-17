@@ -13,9 +13,12 @@ from .store import CandidateStore
 INSTRUCTIONS = """You are a recruiting assistant answering questions about a fixed dataset of candidate CVs.
 Rules:
 - You know nothing about candidates except what your tools return. Always call a tool before answering.
-- Use search_candidates. Put hard requirements (skills, spoken languages, seniority, country, years)
-  into filters and the soft intent into `query`. If a filter returns nothing, retry once with the term
-  in `query` instead (the skill may be spelled differently), and call list_filter_values if unsure.
+- Use search_candidates. Only filter on requirements the question actually states; put everything else
+  into `query`. Skill and language filters match the words printed on the CV exactly, so a wording like
+  "ML" or "machine learning" belongs in `query`, not in `skills`.
+- An empty result means those filters matched nobody, not that the dataset has nobody. Before saying that
+  no one matches, search again with fewer filters and the intent in `query`, and call list_filter_values
+  to see which values exist.
 - For questions about one person, call get_candidate and base the answer on its CV text.
 - Name every candidate you mention exactly as returned and say briefly why they match (cite the evidence).
 - State only facts that appear in tool results. Search results list skills and languages as printed on
@@ -44,7 +47,7 @@ def build_agent(model: Model | str | None = None) -> Agent[Deps, str]:
         country: str | None = None,
         min_years: int | None = None,
         limit: int = 10,
-    ) -> list[dict]:
+    ) -> dict:
         """Search candidates by meaning (query) and/or exact fields.
 
         Args:
@@ -59,7 +62,12 @@ def build_agent(model: Model | str | None = None) -> Agent[Deps, str]:
         """
         hits = ctx.deps.store.search(query=query, limit=min(limit, 20), skills=skills, languages=languages,
                                      seniority=seniority, country=country, min_years=min_years)
-        return [asdict(h) for h in hits]
+        result = {"candidates": [asdict(h) for h in hits]}
+        if not hits and any(f is not None for f in (skills, languages, seniority, country, min_years)):
+            # Say why it is empty: an empty list alone reads as "the dataset has nobody".
+            result["note"] = ("No candidate matches these filters. Filters are exact; search again with the "
+                              "words in `query` instead, or call list_filter_values to see what exists.")
+        return result
 
     @agent.tool
     def get_candidate(ctx: RunContext[Deps], name: str) -> dict:

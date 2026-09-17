@@ -1,3 +1,4 @@
+from pydantic_ai import capture_run_messages
 from pydantic_ai.messages import ModelRequest, ModelResponse, TextPart, ToolCallPart, ToolReturnPart
 from pydantic_ai.models.function import FunctionModel
 from pydantic_ai.models.test import TestModel
@@ -58,3 +59,33 @@ def test_model_never_receives_the_cv_dataset(store):
         assert secret not in sent[0]
     # Not vacuous: candidate data does reach the model, but only after a tool returned it.
     assert "Lucía" in sent[1] and "Becker" not in sent[1]
+
+
+def test_empty_search_explains_itself(store):
+    """An empty list alone made the agent answer "nobody matches" instead of searching differently."""
+    calls = []
+
+    def call_search(messages, info):
+        calls.append(1)
+        if len(calls) == 1:  # a filter on wording no CV prints
+            return ModelResponse(parts=[ToolCallPart("search_candidates", {"skills": ["Machine Learning"]})])
+        return ModelResponse(parts=[TextPart("Done.")])
+
+    with capture_run_messages() as messages:
+        build_agent(FunctionModel(call_search)).run_sync("Best fit for a senior ML role?", deps=Deps(store=store))
+    returned = next(p.content for m in messages for p in m.parts if isinstance(p, ToolReturnPart))
+    assert returned["candidates"] == [] and "call list_filter_values" in returned["note"]
+
+    hits = next(p.content for m in capture_returns(store) for p in m.parts if isinstance(p, ToolReturnPart))
+    assert hits["candidates"] and "note" not in hits  # a search that finds people carries no note
+
+
+def capture_returns(store):
+    def search(messages, info):
+        if not any(isinstance(p, ToolReturnPart) for m in messages for p in m.parts):
+            return ModelResponse(parts=[ToolCallPart("search_candidates", {"languages": ["Spanish"]})])
+        return ModelResponse(parts=[TextPart("Done.")])
+
+    with capture_run_messages() as messages:
+        build_agent(FunctionModel(search)).run_sync("Who speaks Spanish?", deps=Deps(store=store))
+    return messages

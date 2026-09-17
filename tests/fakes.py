@@ -40,7 +40,7 @@ def scripted_model(tool: str, args: dict):
         returns = [p for m in messages for p in m.parts if isinstance(p, ToolReturnPart)]
         if not returns:
             return ModelResponse(parts=[ToolCallPart(tool, args)])
-        names = [hit["name"] for hit in returns[-1].content]
+        names = [hit["name"] for hit in returns[-1].content["candidates"]]
         answer = f"{', '.join(names)} match." if names else "No candidate in the dataset matches."
         return ModelResponse(parts=[TextPart(answer)])
 
