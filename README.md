@@ -8,7 +8,9 @@ structured fields, and answers questions through a CLI agent that searches the i
 
 ## Quick start (Docker)
 
-Requirements: Docker with Compose, an [OpenRouter](https://openrouter.ai/keys) key (a full run costs well under $1).
+Requirements: Docker with Compose, an [OpenRouter](https://openrouter.ai/keys) key. A full run (12 CVs
+with photos, indexing, one eval run) cost about $1.20 with the models in `.env.example`; re-runs are
+cached and cost nothing.
 
 ```bash
 git clone <repo-url> cv-screener && cd cv-screener

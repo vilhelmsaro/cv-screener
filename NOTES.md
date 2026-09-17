@@ -81,11 +81,94 @@ Models: agent `openai/gpt-4.1-mini`, embeddings `openai/text-embedding-3-small`.
 TOTAL: 10/11 cases passed
 ```
 
+### Second run, after the two fixes below (2026-09-17), unedited
+
+```
+[PASS] python_experience: Who has experience with Python?
+    ok  used a tool
+    ok  called search_candidates
+    ok  grounded (names came from tools)
+    ok  names Priya Raman
+    ok  names Lucía Fernández Ortega
+    ok  names Olumide Adeyemi
+    ok  does not name Fatima Zahra El Amrani
+[PASS] spanish_speakers: Which candidates speak Spanish?
+    ok  used a tool
+    ok  called search_candidates
+    ok  grounded (names came from tools)
+    ok  names Lucía Fernández Ortega
+    ok  names Mateo Rojas Quintero
+    ok  does not name Chen Wei
+    ok  does not name Johannes Becker
+    ok  does not name Priya Raman
+[PASS] senior_ml_fit: Who would be the best fit for a senior ML role?
+    ok  used a tool
+    ok  called search_candidates
+    ok  grounded (names came from tools)
+    ok  names Priya Raman
+    ok  does not name Fatima Zahra El Amrani
+    ok  does not name Anna Petrosyan
+[PASS] summarize_person: Summarize the profile of Johannes Becker
+    ok  used a tool
+    ok  called get_candidate
+    ok  grounded (names came from tools)
+    ok  names Johannes Becker
+    ok  mentions key facts
+[PASS] country_filter: Which candidates are based in Germany?
+    ok  used a tool
+    ok  called search_candidates
+    ok  grounded (names came from tools)
+    ok  names Johannes Becker
+    ok  does not name Lucía Fernández Ortega
+    ok  does not name Tomasz Nowak
+[PASS] no_match_japanese: Which candidates speak Japanese?
+    ok  used a tool
+    ok  called search_candidates
+    ok  grounded (names came from tools)
+    ok  names nobody
+    ok  says no match
+[PASS] no_match_pilot: Who has worked as a commercial airline pilot?
+    ok  used a tool
+    ok  grounded (names came from tools)
+    ok  names nobody
+    ok  says no match
+[PASS] unknown_person: Summarize the profile of Maria Gonzalez
+    ok  used a tool
+    ok  grounded (names came from tools)
+    ok  names nobody
+    ok  says no match
+[PASS] semantic_recommender: Who has built recommender systems in production?
+    ok  used a tool
+    ok  called search_candidates
+    ok  grounded (names came from tools)
+    ok  names Priya Raman
+[PASS] filter_plus_semantic: Which Spanish speakers have Kubernetes experience?
+    ok  used a tool
+    ok  called search_candidates
+    ok  grounded (names came from tools)
+    ok  names Mateo Rojas Quintero
+    ok  does not name Lucía Fernández Ortega
+    ok  does not name Chen Wei
+[PASS] partial_name: Summarize the profile of lucia fernandez
+    ok  used a tool
+    ok  called get_candidate
+    ok  grounded (names came from tools)
+    ok  names Lucía Fernández Ortega
+
+TOTAL: 11/11 cases passed
+```
+
 ## Not done / known issues
-- **Eval `senior_ml_fit` fails in the run above.** Asked for the best fit for a senior ML role, the agent
-  filtered on the exact skill "Machine Learning" (no CV lists that literal string) plus a language filter
-  the question never asked for, got nothing, and answered that nobody matches. The grounding check still
-  passed: it invented no one. Fix attempt and a second run are below.
+- The first run failed `senior_ml_fit`: the agent filtered on the exact skill "Machine Learning", which no
+  CV prints, plus a language filter the question never asked for, got an empty list and answered that
+  nobody matches. Two fixes followed, and the second run passes 11/11:
+  1. `search_candidates` now explains an empty result ("filters are exact, retry with the words in
+     `query`") instead of returning a bare empty list, and the agent is told to filter only on what the
+     question states and never by seniority for "best fit" questions.
+  2. A semantic hit must score within 70% of the best hit and above a floor. Without it, "Which Spanish
+     speakers have Kubernetes experience?" also returned two candidates with no Kubernetes at all.
+- The relevance thresholds are calibrated for `openai/text-embedding-3-small` on these 12 CVs (real
+  matches 0.44-0.57, unrelated 0.34 or less). Another embedding model would need them re-measured.
 - `get_candidate` returns the first candidate whose name words match; with two similar names it would
   silently pick one. No two candidates share name words in this dataset.
 - Photo generation depends on the chosen OpenRouter image model. A failed candidate is skipped and listed at the end;
