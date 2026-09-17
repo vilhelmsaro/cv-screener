@@ -47,8 +47,9 @@ pytest
    re-runs are free (`--force` regenerates).
 2. **Indexing** (`cv_screener/index.py`, `store.py`). Text is extracted from the **PDFs** (not from the
    source JSON), an LLM extracts `ExtractedFields`, and two Chroma collections are written:
-   `profiles` (one record per candidate) and `chunks` (groups of PDF text blocks, each embedded with the
-   candidate's name and title). Every record carries the fields as metadata, including normalized
+   `profiles` (one record per candidate) and `chunks` (one per CV section, and one per job or degree,
+   found from section headings and date ranges in the PDF text; each is embedded with the candidate's
+   name and title). Every record carries the fields as metadata, including normalized
    `skill_keys` / `lang_keys` lists for exact filtering (`{"skill_keys": {"$contains": "python"}}`).
 3. **Search.** `CandidateStore.search()` combines metadata filters (skills, languages, seniority, country,
    min years) with semantic similarity over chunks; with no query it is a pure field search.

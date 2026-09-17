@@ -1,7 +1,7 @@
 import pymupdf
 
 from cv_screener.index import pdf_text
-from cv_screener.store import CandidateStore, chunk_text, norm
+from cv_screener.store import CandidateStore, chunk_cv, norm
 
 from .fakes import make_fields
 
@@ -42,21 +42,80 @@ def test_get_candidate_is_accent_and_partial_insensitive(store):
     assert store.get("an") is None and store.get("") is None
 
 
-def test_pdf_blocks_become_separate_chunks(tmp_path):
+CV_TEXT = """CONTACT
+
+jane@example.com
+
+SKILLS
+
+Python, SQL
+
+Jane Doe
+
+Data Engineer
+
+Builds pipelines.
+
+Experience
+
+Data Engineer
+Feb 2022 – Present
+Acme · Berlin
+
+Built Spark jobs.
+
+Moved ETL to Airflow.
+
+Junior Analyst
+2019 – 2021
+Beta · Berlin
+
+Wrote SQL reports.
+
+Education
+
+Frontend Bootcamp (React,
+JavaScript)
+
+Apr 2018 – Sep
+2018
+Code School · Berlin"""
+
+
+def test_chunk_cv_splits_by_section_and_entry():
+    chunks = chunk_cv(CV_TEXT, name="Jane Doe")
+    assert chunks == [
+        "Contact\njane@example.com",
+        "Skills\nPython, SQL",
+        "Jane Doe\nData Engineer\nBuilds pipelines.",  # sidebar layout: summary is not glued to Skills
+        "Experience\nData Engineer\nFeb 2022 – Present\nAcme · Berlin\nBuilt Spark jobs.\nMoved ETL to Airflow.",
+        "Experience\nJunior Analyst\n2019 – 2021\nBeta · Berlin\nWrote SQL reports.",
+        "Education\nFrontend Bootcamp (React,\nJavaScript)\nApr 2018 – Sep\n2018\nCode School · Berlin",
+    ]
+
+
+def test_chunk_cv_splits_oversized_entry_and_keeps_title():
+    text = "Experience\n\nLead\n2020 – 2024\nAcme\n\n" + "\n".join(f"Bullet {i} " + "x" * 50 for i in range(20))
+    chunks = chunk_cv(text, max_chars=400)
+    assert len(chunks) > 1
+    assert all(c.startswith("Experience\nLead") and len(c) <= 420 for c in chunks)
+
+
+def test_pdf_text_keeps_layout_blocks(tmp_path):
     path = tmp_path / "cv.pdf"
     doc = pymupdf.open()
     page = doc.new_page()
-    for i, y in enumerate(range(80, 700, 60)):
-        page.insert_textbox(pymupdf.Rect(72, y, 520, y + 50), f"Job {i}: " + "shipped features " * 12)
+    page.insert_textbox(pymupdf.Rect(72, 60, 520, 90), "Experience")
+    # The built-in PDF font has no en dash, so this also covers plain-hyphen date ranges.
+    page.insert_textbox(pymupdf.Rect(72, 120, 520, 180), "Data Engineer\nFeb 2022 - Present\nAcme, Berlin")
+    page.insert_textbox(pymupdf.Rect(72, 220, 520, 260), "Built Spark jobs.")
     page.insert_text((72, 760), "•")
     doc.save(path)
     text = pdf_text(path)
     assert "•" not in text
-    chunks = chunk_text(text)
-    assert len(chunks) > 1 and all(len(c) < 1200 for c in chunks)
+    assert chunk_cv(text) == ["Experience\nData Engineer\nFeb 2022 - Present\nAcme, Berlin\nBuilt Spark jobs."]
 
 
 def test_helpers():
     assert norm("C++") == "cplusplus" and norm("Node.js") == "nodejs" and norm("Español") == "espanol"
     assert CandidateStore.build_where() is None
-    assert len(chunk_text("a\n\n" * 5, size=1)) == 5

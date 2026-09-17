@@ -64,18 +64,79 @@ def field_metadata(cid: str, f: ExtractedFields) -> dict:
     return meta
 
 
-def chunk_text(text: str, size: int = 800) -> list[str]:
-    """Group blank-line separated blocks (see index.pdf_text) into chunks of about `size` chars."""
-    paras = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
-    chunks, cur = [], ""
-    for p in paras:
-        if cur and len(cur) + len(p) > size:
-            chunks.append(cur)
-            cur = ""
-        cur = f"{cur}\n{p}".strip()
-    if cur:
-        chunks.append(cur)
+SECTION_HEADINGS = {
+    "profile", "summary", "professional summary", "about", "about me", "contact", "contacts",
+    "experience", "professional experience", "work experience", "employment", "employment history",
+    "education", "skills", "technical skills", "core skills", "languages", "projects", "publications",
+    "certifications", "certificates", "courses", "awards", "volunteering", "interests", "hobbies",
+}
+_MONTH = r"(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?"
+# Start of a date range such as "Feb 2022 – Present", "2016 – 2019" or "03/2019 - 06/2022".
+_DATE_RANGE = re.compile(rf"^(?:{_MONTH}\s+|\d{{1,2}}/)?\d{{4}}\s*[–—-]", re.IGNORECASE)
+
+
+def _is_heading(block: str) -> bool:
+    return block.strip().rstrip(":").casefold() in SECTION_HEADINGS
+
+
+def _date_line_index(block: str) -> int | None:
+    """Index of the first short line in the block that starts a date range, if any."""
+    for i, line in enumerate(block.splitlines()[:4]):
+        if len(line) <= 40 and _DATE_RANGE.match(line.strip()):
+            return i
+    return None
+
+
+def chunk_cv(text: str, name: str = "", max_chars: int = 2000) -> list[str]:
+    """Split CV text into meaningful chunks: one per section, and one per dated entry (job, degree).
+
+    `text` is blank-line separated layout blocks (see index.pdf_text). A block that is a known heading
+    starts a section; the candidate's name starts the header section, because two-column layouts put the
+    sidebar first. Inside a section, an entry starts at the block holding its date range, or at the block
+    before it when the dates start their own block (a wrapped title). Every chunk begins with its section
+    heading, so a snippet shows where the evidence came from.
+    """
+    blocks = [b.strip() for b in re.split(r"\n\s*\n", text) if b.strip()]
+    sections: list[tuple[str, list[str]]] = [("", [])]
+    for block in blocks:
+        if _is_heading(block):
+            sections.append((block.strip().rstrip(":").title(), []))
+        elif name and fold(block.splitlines()[0]).strip() == fold(name).strip():
+            sections.append(("", [block]))
+        else:
+            sections[-1][1].append(block)
+
+    chunks: list[str] = []
+    for heading, body in sections:
+        entries: list[list[str]] = []
+        for block in body:
+            idx = _date_line_index(block)
+            if idx == 0 and entries and len(entries[-1]) == 1 and _date_line_index(entries[-1][0]) is None \
+                    and len(entries[-1][0]) <= 120:
+                entries[-1].append(block)  # dates in their own block right after a wrapped title
+            elif idx is not None or not entries:
+                entries.append([block])
+            else:
+                entries[-1].append(block)
+        for entry in entries:
+            chunks.extend(_split_long("\n".join(entry), heading, max_chars))
     return chunks
+
+
+def _split_long(entry: str, heading: str, max_chars: int) -> list[str]:
+    prefix = f"{heading}\n" if heading else ""
+    if len(entry) <= max_chars:
+        return [prefix + entry]
+    # Rare: keep the entry's first line (e.g. the job title) on every part.
+    lines = entry.splitlines()
+    parts, cur = [], lines[0]
+    for line in lines[1:]:
+        if len(cur) + len(line) > max_chars:
+            parts.append(cur)
+            cur = lines[0]
+        cur += "\n" + line
+    parts.append(cur)
+    return [prefix + p for p in parts]
 
 
 @dataclass
@@ -104,7 +165,7 @@ class CandidateStore:
     def upsert(self, cid: str, fields: ExtractedFields, full_text: str) -> None:
         meta = field_metadata(cid, fields)
         profile_doc = f"{fields.full_name}. {fields.current_title}. {fields.summary} Skills: {meta['skills']}"
-        chunks = chunk_text(full_text)
+        chunks = chunk_cv(full_text, name=fields.full_name)
         # Prefix each chunk with who it belongs to so a lone bullet list still embeds in context.
         header = f"{fields.full_name}, {fields.current_title}\n"
         vectors = self.embedder.embed([profile_doc, *(header + c for c in chunks)])
@@ -154,7 +215,7 @@ class CandidateStore:
             h = hits.setdefault(meta["candidate_id"], self._hit(meta))
             h.score = max(h.score or 0.0, round(1 - dist, 3))
             if len(h.snippets) < 2:  # results are sorted by distance: best evidence first
-                h.snippets.append(doc[:500])
+                h.snippets.append(doc[:1200])
         return sorted(hits.values(), key=lambda h: -(h.score or 0))[:limit]
 
     def all_profiles(self) -> list[dict]:

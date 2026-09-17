@@ -15,7 +15,8 @@ TODO: run evals and paste results
   the agent is instructed to fall back to semantic search.
 - No keyword (BM25) ranking; search is metadata filters + semantic similarity over chunks. The profile-level
   embedding is stored but not queried yet.
-- Chunks come from PDF layout blocks; on the two-column `modern` template the sidebar is read before the main column.
+- Chunking relies on common English section headings and date ranges ("Feb 2022 – Present"). A CV with
+  unusual headings falls back to fewer, larger chunks rather than failing.
 
 ## Next steps
 - BM25 + vector fusion, reranker for "best fit" questions.
