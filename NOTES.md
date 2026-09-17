@@ -158,6 +158,14 @@ TOTAL: 10/11 cases passed
 TOTAL: 11/11 cases passed
 ```
 
+### Fresh-clone check (2026-09-17)
+
+The repo was cloned to a new directory, built, and run through the README from scratch: `generate` wrote
+12 new CVs with photos, `index` reported coverage OK, the offline tests passed on that new data, and
+`cvs eval` again scored **11/11**, so the cases are not tuned to one generated dataset. That run also
+caught a real bug: the generator emitted "Git, Jenkins" as one skill item, which the page renders
+identically to two skills, fixed by splitting skill items on commas outside brackets.
+
 ## Not done / known issues
 - The first run failed `senior_ml_fit`: the agent filtered on the exact skill "Machine Learning", which no
   CV prints, plus a language filter the question never asked for, got an empty list and answered that
