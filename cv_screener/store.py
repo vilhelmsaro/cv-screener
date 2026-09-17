@@ -38,7 +38,8 @@ def field_metadata(cid: str, f: ExtractedFields) -> dict:
         "name": f.full_name,
         "title": f.current_title,
         "city": f.city,
-        "country": norm(f.country),
+        "country": f.country,
+        "country_key": norm(f.country),
         "seniority": f.seniority,
         "years_experience": f.years_experience,
         "skills": ", ".join(f.skills),
@@ -46,9 +47,11 @@ def field_metadata(cid: str, f: ExtractedFields) -> dict:
         "education": f.highest_education,
         "summary": f.summary,
     }
-    # One boolean flag per skill/language: exact, portable filtering in Chroma.
-    meta.update({f"skill_{norm(s)}": True for s in f.skills})
-    meta.update({f"lang_{norm(lang)}": True for lang in f.languages})
+    # Normalized list metadata for exact filtering with $contains. Chroma rejects empty lists.
+    if skill_keys := sorted({norm(s) for s in f.skills} - {""}):
+        meta["skill_keys"] = skill_keys
+    if lang_keys := sorted({norm(lang) for lang in f.languages} - {""}):
+        meta["lang_keys"] = lang_keys
     return meta
 
 
@@ -93,9 +96,11 @@ class CandidateStore:
         profile_doc = f"{fields.full_name}. {fields.current_title}. {fields.summary} Skills: {meta['skills']}"
         chunks = chunk_text(full_text)
         vectors = self.embedder.embed([profile_doc, *chunks])
-        self.profiles.upsert(ids=[cid], documents=[full_text], embeddings=[vectors[0]], metadatas=[meta])
+        # Delete first: Chroma's upsert merges metadata keys, so a re-index could keep stale fields.
+        self.profiles.delete(ids=[cid])
+        self.profiles.add(ids=[cid], documents=[full_text], embeddings=[vectors[0]], metadatas=[meta])
         self.chunks.delete(where={"candidate_id": cid})
-        self.chunks.upsert(
+        self.chunks.add(
             ids=[f"{cid}-{i}" for i in range(len(chunks))],
             documents=chunks,
             embeddings=vectors[1:],
@@ -105,12 +110,12 @@ class CandidateStore:
     # ---------- read ----------
     @staticmethod
     def build_where(skills=None, languages=None, seniority=None, country=None, min_years=None) -> dict | None:
-        conds: list[dict] = [{f"skill_{norm(s)}": True} for s in skills or []]
-        conds += [{f"lang_{norm(lang)}": True} for lang in languages or []]
+        conds: list[dict] = [{"skill_keys": {"$contains": norm(s)}} for s in skills or []]
+        conds += [{"lang_keys": {"$contains": norm(lang)}} for lang in languages or []]
         if seniority:
             conds.append({"seniority": {"$in": list(seniority)}})
         if country:
-            conds.append({"country": norm(country)})
+            conds.append({"country_key": norm(country)})
         if min_years is not None:
             conds.append({"years_experience": {"$gte": int(min_years)}})
         if not conds:
@@ -123,7 +128,7 @@ class CandidateStore:
                    location=f"{meta['city']}, {meta['country']}", seniority=meta["seniority"],
                    years_experience=meta["years_experience"])
 
-    def search(self, query: str | None = None, limit: int = 5, **filters) -> list[Hit]:
+    def search(self, query: str | None = None, limit: int = 10, **filters) -> list[Hit]:
         where = self.build_where(**filters)
         if not query:  # pure field search
             res = self.profiles.get(where=where, include=["metadatas"])
@@ -144,12 +149,14 @@ class CandidateStore:
         return self.profiles.get(include=["metadatas"])["metadatas"]
 
     def get(self, name_or_id: str) -> dict | None:
-        key = fold(name_or_id)
+        key = fold(name_or_id).strip()
+        if not key:
+            return None
         res = self.profiles.get(include=["metadatas", "documents"])
         for cid, meta, doc in zip(res["ids"], res["metadatas"], res["documents"]):
-            name = fold(meta["name"])
-            if key == cid or key in name or all(part in name for part in key.split()):
-                fields = {k: v for k, v in meta.items() if not k.startswith(("skill_", "lang_"))}
+            # Whole-word match, any order: "lucia fernandez" finds "Lucía Fernández Ortega", "an" finds nobody.
+            if key == cid or set(key.split()) <= set(fold(meta["name"]).split()):
+                fields = {k: v for k, v in meta.items() if not k.endswith("_keys") and k != "country_key"}
                 return {"fields": fields, "cv_text": doc}
         return None
 

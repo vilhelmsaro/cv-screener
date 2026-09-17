@@ -41,7 +41,7 @@ def build_agent(model: Model | str | None = None) -> Agent[Deps, str]:
         seniority: list[Seniority] | None = None,
         country: str | None = None,
         min_years: int | None = None,
-        limit: int = 5,
+        limit: int = 10,
     ) -> list[dict]:
         """Search candidates by meaning (query) and/or exact fields.
 
@@ -52,9 +52,9 @@ def build_agent(model: Model | str | None = None) -> Agent[Deps, str]:
             seniority: allowed levels.
             country: country name in English.
             min_years: minimum years of professional experience.
-            limit: max candidates to return.
+            limit: max candidates to return (capped at 20).
         """
-        hits = ctx.deps.store.search(query=query, limit=limit, skills=skills, languages=languages,
+        hits = ctx.deps.store.search(query=query, limit=min(limit, 20), skills=skills, languages=languages,
                                      seniority=seniority, country=country, min_years=min_years)
         return [asdict(h) for h in hits]
 
